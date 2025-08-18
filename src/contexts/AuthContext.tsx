@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { useEffect } from 'react';
 import { authApi } from '../services/authApi';
 import { ApiError } from '../services/api';
 import { User } from '../types';
@@ -6,6 +7,7 @@ import { User } from '../types';
 interface AuthContextType {
   user: User | null;
   token: string | null;
+  isInitialized: boolean;
   initializeUser: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthResponse | null>;
   signup: (email: string, username: string, password: string) => Promise<AuthResponse | null>;
@@ -38,22 +40,67 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Initialize user on app start
+  useEffect(() => {
+    initializeUser();
+  }, []);
+
+  // Save user data to localStorage whenever user changes
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
+
   const initializeUser = async () => {
-    if (token && !user && !isLoading) {
-      setIsLoading(true);
-      try {
-        const userData = await authApi.getProfile();
-        setUser(userData);
-      } catch (err) {
-        console.error('Failed to get user profile:', err);
-        localStorage.removeItem('token');
-        setToken(null);
-      } finally {
-        setIsLoading(false);
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Try to get user from localStorage first
+      const savedUser = localStorage.getItem('user');
+      if (savedUser && token) {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
       }
+      
+      // If we have a token, fetch fresh user data from server
+      if (token) {
+        try {
+          const userData = await authApi.getProfile();
+          
+          // Check if email is verified
+          if (!userData.emailVerified) {
+            console.warn('User email not verified');
+            // You can add additional logic here for unverified users
+          }
+          
+          setUser(userData);
+        } catch (err: any) {
+          console.error('Failed to get user profile:', err);
+          
+          // If token is invalid, clear it
+          if (err.status === 401 || err.status === 403) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
+            localStorage.removeItem('user');
+            setToken(null);
+            setUser(null);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to initialize user:', err);
+    } finally {
+      setIsLoading(true);
+      setIsInitialized(true);
     }
   };
 
@@ -62,8 +109,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     try {
       const response = await authApi.login({ email, password });
+      
+      // Check if email verification is required
+      if (response.emailVerificationRequired) {
+        // Don't set tokens or user data if email verification is required
+        return response;
+      }
+      
+      // Check if user email is verified
+      if (!response.user.emailVerified) {
+        setError('Please verify your email address before logging in');
+        return null;
+      }
+      
       localStorage.setItem('token', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
+      localStorage.setItem('user', JSON.stringify(response.user));
       setToken(response.accessToken);
       setUser(response.user);
       return response;
@@ -86,6 +147,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!response.emailVerificationRequired) {
         localStorage.setItem('token', response.accessToken);
         localStorage.setItem('refreshToken', response.refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.user));
         setToken(response.accessToken);
         setUser(response.user);
       }
@@ -108,6 +170,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
     setToken(null);
     setUser(null);
     setError(null);
@@ -118,15 +181,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const updatedUser = await authApi.updateProfile(userData);
       setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
     } catch (err) {
       console.error('Failed to update user:', err);
-      setUser({ ...user, ...userData }); // optimistic update fallback
+      const optimisticUser = { ...user, ...userData };
+      setUser(optimisticUser); // optimistic update fallback
+      localStorage.setItem('user', JSON.stringify(optimisticUser));
     }
   };
 
   return (
     <AuthContext.Provider
-      value={{ user, token, initializeUser, login, signup, logout, updateUser, isLoading, error }}
+      value={{ user, token, isInitialized, initializeUser, login, signup, logout, updateUser, isLoading, error }}
     >
       {children}
     </AuthContext.Provider>

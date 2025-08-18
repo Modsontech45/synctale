@@ -10,6 +10,7 @@ export interface User {
   followingCount: number;
   postsCount: number;
   isVerified?: boolean;
+  emailVerified?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -23,11 +23,13 @@ const LoginPage: React.FC = () => {
       return;
     }
 
-    const success = await login(email, password);
-    if (success) {
-      navigate(from, { replace: true });
-    } else {
-      setError('Invalid email or password');
+    const response = await login(email, password);
+    if (response) {
+      if (response.emailVerificationRequired) {
+        navigate('/verify-email', { state: { email } });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
   };
 
