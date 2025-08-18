@@ -100,8 +100,8 @@ const SearchPage: React.FC = () => {
   useEffect(() => {
     setLoading(true);
     
-    // Simulate API search
-    setTimeout(() => {
+    // Define async function for API calls
+    const performSearch = async () => {
       if (query.trim()) {
         try {
           // Search posts using the API
@@ -134,7 +134,11 @@ const SearchPage: React.FC = () => {
         setUsers([]);
       }
       setLoading(false);
-    }, 500);
+    };
+
+    // Execute search with delay
+    const timeoutId = setTimeout(performSearch, 500);
+    return () => clearTimeout(timeoutId);
   }, [query]);
 
   const displayPosts = searchType === 'users' ? [] : posts;
