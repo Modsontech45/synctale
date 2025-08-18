@@ -6,8 +6,12 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
-  },
   server: {
+  server: {
+    proxy: {
+      '/api': 'http://localhost:5000', // forward API calls to your backend
+    },
+  },
     proxy: {
       '/api': 'http://localhost:5000', // forward API calls to your backend
     },
