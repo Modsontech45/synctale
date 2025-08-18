@@ -7,7 +7,7 @@ import PostCard from '../components/Post/PostCard';
 
 const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, refreshUserData } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +16,12 @@ const ProfilePage: React.FC = () => {
 
   const isOwnProfile = currentUser?.id === id;
 
+  // Refresh current user data when viewing own profile
+  useEffect(() => {
+    if (isOwnProfile && currentUser) {
+      refreshUserData();
+    }
+  }, [isOwnProfile, currentUser?.id, refreshUserData]);
   // Mock data
   const mockUser: User = {
     id: 'u123',

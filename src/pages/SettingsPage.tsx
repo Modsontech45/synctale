@@ -18,12 +18,18 @@ import {
 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
-  const { user, updateUser, logout } = useAuth();
+  const { user, updateUser, logout, refreshUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'privacy' | 'notifications'>('profile');
   const [isLoading, setIsLoading] = useState(false);
 
+  // Refresh user data when settings page loads
+  useEffect(() => {
+    if (user) {
+      refreshUserData();
+    }
+  }, [user?.id, refreshUserData]);
   // Profile form state
   const [profileForm, setProfileForm] = useState({
     username: user?.username || '',

@@ -9,6 +9,7 @@ interface AuthContextType {
   token: string | null;
   isInitialized: boolean;
   initializeUser: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
   login: (email: string, password: string) => Promise<AuthResponse | null>;
   signup: (email: string, username: string, password: string) => Promise<AuthResponse | null>;
   logout: () => void;
@@ -116,8 +117,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user]);
 
   const initializeUser = async () => {
-    if (isLoading) return;
-    
     setIsLoading(true);
     
     try {
@@ -144,7 +143,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      if (savedUser && token) {
+      // Set cached user data immediately for better UX
+      if (savedUser && token && !user) {
         setUser(savedUser);
         saveToSession('lastActivity', Date.now());
       }
@@ -152,6 +152,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // If we have a token, fetch fresh user data from server
       if (token) {
         try {
+          console.log('[AuthContext] Fetching fresh user data from server...');
           const userData = await authApi.getProfile();
           
           // Check if email is verified
@@ -159,6 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.warn('User email not verified');
           }
           
+          console.log('[AuthContext] Fresh user data received:', userData);
           setUser(userData);
           saveToSession('user', userData);
           saveToSession('lastActivity', Date.now());
@@ -167,6 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
           // If token is invalid, clear it
           if (err.status === 401 || err.status === 403) {
+            console.warn('[AuthContext] Token invalid, clearing session');
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
             removeFromSession('user');
@@ -175,6 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setUser(null);
           }
         }
+      } else {
+        console.log('[AuthContext] No token found, user not authenticated');
       }
     } catch (err) {
       console.error('Failed to initialize user:', err);
@@ -184,24 +189,49 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Refresh user data function for manual calls
+  const refreshUserData = async () => {
+    if (!token) return;
+    
+    try {
+      console.log('[AuthContext] Manually refreshing user data...');
+      const userData = await authApi.getProfile();
+      setUser(userData);
+      saveToSession('user', userData);
+      saveToSession('lastActivity', Date.now());
+      console.log('[AuthContext] User data refreshed successfully');
+    } catch (err: any) {
+      console.error('Failed to refresh user data:', err);
+      
+      // If token is invalid during refresh, logout
+      if (err.status === 401 || err.status === 403) {
+        console.warn('[AuthContext] Token invalid during refresh, logging out');
+        logout();
+      }
+    }
+  };
   const login = async (email: string, password: string): Promise<AuthResponse | null> => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('[AuthContext] Attempting login for:', email);
       const response = await authApi.login({ email, password });
       
       // Check if email verification is required
       if (response.emailVerificationRequired) {
+        console.log('[AuthContext] Email verification required');
         // Don't set tokens or user data if email verification is required
         return response;
       }
       
       // Check if user email is verified
       if (!response.user.emailVerified) {
+        console.warn('[AuthContext] User email not verified');
         setError('Please verify your email address before logging in');
         return null;
       }
       
+      console.log('[AuthContext] Login successful, saving session data');
       localStorage.setItem('token', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
       saveToSession('user', response.user);
@@ -222,16 +252,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     setError(null);
     try {
+      console.log('[AuthContext] Attempting signup for:', email);
       const response = await authApi.signup({ email, username, password });
       
       // Only set tokens and user if email verification is not required
       if (!response.emailVerificationRequired) {
+        console.log('[AuthContext] Signup successful, saving session data');
         localStorage.setItem('token', response.accessToken);
         localStorage.setItem('refreshToken', response.refreshToken);
         saveToSession('user', response.user);
         saveToSession('lastActivity', Date.now());
         setToken(response.accessToken);
         setUser(response.user);
+      } else {
+        console.log('[AuthContext] Signup successful, email verification required');
       }
       
       return response;
@@ -245,6 +279,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    console.log('[AuthContext] Logging out user');
     // Call backend logout endpoint (optional - for session cleanup)
     if (token) {
       authApi.logout().catch(err => console.error('Logout API call failed:', err));
@@ -262,12 +297,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateUser = async (userData: Partial<User>) => {
     if (!user) return;
     try {
+      console.log('[AuthContext] Updating user data:', userData);
       const updatedUser = await authApi.updateProfile(userData);
       setUser(updatedUser);
       saveToSession('user', updatedUser);
       saveToSession('lastActivity', Date.now());
+      console.log('[AuthContext] User data updated successfully');
     } catch (err) {
       console.error('Failed to update user:', err);
+      console.log('[AuthContext] Using optimistic update as fallback');
       const optimisticUser = { ...user, ...userData };
       setUser(optimisticUser); // optimistic update fallback
       saveToSession('user', optimisticUser);
@@ -277,7 +315,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, isInitialized, initializeUser, login, signup, logout, updateUser, isLoading, error }}
+      value={{ 
+        user, 
+        token, 
+        isInitialized, 
+        initializeUser, 
+        refreshUserData,
+        login, 
+        signup, 
+        logout, 
+        updateUser, 
+        isLoading, 
+        error 
+      }}
     >
       {children}
     </AuthContext.Provider>

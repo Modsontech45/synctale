@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 
 const Navbar: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUserData } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const { updateActivity } = useSessionManager();
@@ -34,6 +34,12 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // Refresh user data when component mounts
+  useEffect(() => {
+    if (user) {
+      refreshUserData();
+    }
+  }, [user?.id, refreshUserData]); // Only refresh when user ID changes
   // Update activity on user interactions
   const handleUserActivity = () => {
     updateActivity();
