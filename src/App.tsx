@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { useAuth } from './contexts/AuthContext';
+import { useSessionManager } from './hooks/useSessionManager';
 import Navbar from './components/Layout/Navbar';
 import Footer from './components/Layout/Footer';
 import HomePage from './pages/HomePage';
@@ -30,6 +31,9 @@ import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 const AppContent: React.FC = () => {
   const { isInitialized } = useAuth();
+  
+  // Initialize session management
+  useSessionManager();
 
   if (!isInitialized) {
     return (

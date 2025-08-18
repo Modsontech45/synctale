@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useSessionManager } from "../../hooks/useSessionManager";
 import {
   Search,
   Bell,
@@ -25,6 +26,7 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
+  const { updateActivity } = useSessionManager();
   const navigate = useNavigate();
   const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
@@ -32,8 +34,14 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // Update activity on user interactions
+  const handleUserActivity = () => {
+    updateActivity();
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    handleUserActivity();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");

@@ -44,18 +44,75 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Storage utilities for session management
+  const saveToSession = (key: string, value: any) => {
+    try {
+      sessionStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error('Failed to save to sessionStorage:', error);
+    }
+  };
+
+  const getFromSession = (key: string) => {
+    try {
+      const item = sessionStorage.getItem(key);
+      return item ? JSON.parse(item) : null;
+    } catch (error) {
+      console.error('Failed to get from sessionStorage:', error);
+      return null;
+    }
+  };
+
+  const removeFromSession = (key: string) => {
+    try {
+      sessionStorage.removeItem(key);
+    } catch (error) {
+      console.error('Failed to remove from sessionStorage:', error);
+    }
+  };
+
   // Initialize user on app start
   useEffect(() => {
     initializeUser();
   }, []);
 
-  // Save user data to localStorage whenever user changes
+  // Save user data to sessionStorage whenever user changes
   useEffect(() => {
     if (user) {
-      localStorage.setItem('user', JSON.stringify(user));
+      saveToSession('user', user);
+      saveToSession('lastActivity', Date.now());
     } else {
-      localStorage.removeItem('user');
+      removeFromSession('user');
+      removeFromSession('lastActivity');
     }
+  }, [user]);
+
+  // Check session validity on focus/visibility change
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && user) {
+        // Check if session is still valid when user returns to tab
+        const lastActivity = getFromSession('lastActivity');
+        const now = Date.now();
+        const sessionTimeout = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (lastActivity && (now - lastActivity) > sessionTimeout) {
+          // Session expired, logout user
+          logout();
+        } else {
+          // Update last activity
+          saveToSession('lastActivity', now);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
   }, [user]);
 
   const initializeUser = async () => {
@@ -64,11 +121,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsLoading(true);
     
     try {
-      // Try to get user from localStorage first
-      const savedUser = localStorage.getItem('user');
+      // Try to get user from sessionStorage first
+      const savedUser = getFromSession('user');
+      const lastActivity = getFromSession('lastActivity');
+      
+      // Check session validity
+      if (savedUser && lastActivity) {
+        const now = Date.now();
+        const sessionTimeout = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if ((now - lastActivity) > sessionTimeout) {
+          // Session expired, clear data
+          removeFromSession('user');
+          removeFromSession('lastActivity');
+          localStorage.removeItem('token');
+          localStorage.removeItem('refreshToken');
+          setToken(null);
+          setUser(null);
+          setIsInitialized(true);
+          setIsLoading(false);
+          return;
+        }
+      }
+      
       if (savedUser && token) {
-        const parsedUser = JSON.parse(savedUser);
-        setUser(parsedUser);
+        setUser(savedUser);
+        saveToSession('lastActivity', Date.now());
       }
       
       // If we have a token, fetch fresh user data from server
@@ -79,10 +157,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // Check if email is verified
           if (!userData.emailVerified) {
             console.warn('User email not verified');
-            // You can add additional logic here for unverified users
           }
           
           setUser(userData);
+          saveToSession('user', userData);
+          saveToSession('lastActivity', Date.now());
         } catch (err: any) {
           console.error('Failed to get user profile:', err);
           
@@ -90,7 +169,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (err.status === 401 || err.status === 403) {
             localStorage.removeItem('token');
             localStorage.removeItem('refreshToken');
-            localStorage.removeItem('user');
+            removeFromSession('user');
+            removeFromSession('lastActivity');
             setToken(null);
             setUser(null);
           }
@@ -99,7 +179,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch (err) {
       console.error('Failed to initialize user:', err);
     } finally {
-      setIsLoading(true);
+      setIsLoading(false);
       setIsInitialized(true);
     }
   };
@@ -124,7 +204,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       localStorage.setItem('token', response.accessToken);
       localStorage.setItem('refreshToken', response.refreshToken);
-      localStorage.setItem('user', JSON.stringify(response.user));
+      saveToSession('user', response.user);
+      saveToSession('lastActivity', Date.now());
       setToken(response.accessToken);
       setUser(response.user);
       return response;
@@ -147,7 +228,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (!response.emailVerificationRequired) {
         localStorage.setItem('token', response.accessToken);
         localStorage.setItem('refreshToken', response.refreshToken);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        saveToSession('user', response.user);
+        saveToSession('lastActivity', Date.now());
         setToken(response.accessToken);
         setUser(response.user);
       }
@@ -170,7 +252,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
+    removeFromSession('user');
+    removeFromSession('lastActivity');
     setToken(null);
     setUser(null);
     setError(null);
@@ -181,12 +264,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const updatedUser = await authApi.updateProfile(userData);
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      saveToSession('user', updatedUser);
+      saveToSession('lastActivity', Date.now());
     } catch (err) {
       console.error('Failed to update user:', err);
       const optimisticUser = { ...user, ...userData };
       setUser(optimisticUser); // optimistic update fallback
-      localStorage.setItem('user', JSON.stringify(optimisticUser));
+      saveToSession('user', optimisticUser);
+      saveToSession('lastActivity', Date.now());
     }
   };
 
