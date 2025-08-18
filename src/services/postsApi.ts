@@ -144,7 +144,6 @@ export const postsApi = {
   /** Delete a comment */
   deleteComment: (id: string): Promise<void> =>
     apiRequest(`/api/comments/${id}`, { method: 'DELETE' }),
-      .then(mapCommentData),
 
   /** Get posts created by a specific user */
   getUserPosts: (userId: string, page = 1, limit = 10): Promise<PostsResponse> =>
