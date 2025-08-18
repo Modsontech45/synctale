@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { postsApi, CreatePostRequest } from '../services/postsApi';
+import { ApiError } from '../services/api';
 import { Image, X, Plus } from 'lucide-react';
 
 const CreatePostPage: React.FC = () => {
@@ -10,6 +12,7 @@ const CreatePostPage: React.FC = () => {
   const [images, setImages] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const categories = [
     'Finance',
@@ -37,28 +40,36 @@ const CreatePostPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     
     if (!title.trim() || !category || !content.trim()) {
-      alert('Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
 
     setIsSubmitting(true);
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const postData: CreatePostRequest = {
+        title: title.trim(),
+        category,
+        content: content.trim(),
+        images: images.length > 0 ? images : undefined
+      };
 
-    // In a real app, you would send the data to your API
-    console.log('Creating post:', {
-      title: title.trim(),
-      category,
-      content: content.trim(),
-      images
-    });
-
-    setIsSubmitting(false);
-    navigate('/feed');
+      const newPost = await postsApi.createPost(postData);
+      console.log('Post created successfully:', newPost);
+      
+      // Navigate to the new post or feed
+      navigate(`/post/${newPost.id}`);
+    } catch (error) {
+      console.error('Failed to create post:', error);
+      setError(error instanceof ApiError ? error.message : 'Failed to create post');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -69,6 +80,13 @@ const CreatePostPage: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-800 dark:text-red-200 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Title */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

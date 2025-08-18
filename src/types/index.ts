@@ -10,6 +10,15 @@ export interface User {
   followingCount: number;
   postsCount: number;
   isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
 }
 
 export interface Post {
@@ -31,6 +40,7 @@ export interface Post {
     isVerified?: boolean;
   };
   createdAt: string;
+  updatedAt?: string;
   isLiked?: boolean;
   isDisliked?: boolean;
 }
@@ -44,6 +54,9 @@ export interface Comment {
     profilePicture?: string;
   };
   createdAt: string;
+  updatedAt?: string;
+  likes?: number;
+  parentId?: string;
 }
 
 export interface Notification {
@@ -57,6 +70,7 @@ export interface Notification {
   };
   createdAt: string;
   isRead: boolean;
+  relatedPostId?: string;
 }
 
 export interface Payout {
@@ -68,6 +82,9 @@ export interface Payout {
   netPayout: number;
   status: 'Pending' | 'Paid' | 'Cancelled';
   date: string;
+  requestedAt?: string;
+  processedAt?: string;
+  notes?: string;
 }
 
 export interface ChatMessage {
@@ -77,6 +94,8 @@ export interface ChatMessage {
   message: string;
   createdAt: string;
   isRead: boolean;
+  messageType?: 'text' | 'image' | 'file';
+  updatedAt?: string;
 }
 
 export interface ChatConversation {
@@ -90,4 +109,5 @@ export interface ChatConversation {
   lastMessage?: ChatMessage;
   unreadCount: number;
   updatedAt: string;
+  createdAt?: string;
 }

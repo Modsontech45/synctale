@@ -1,35 +1,33 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  profilePicture?: string;
-  bio?: string;
-  balance: number;
-  followersCount: number;
-  followingCount: number;
-  postsCount: number;
-  isVerified?: boolean;
-}
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { authApi } from '../services/authApi';
+import { ApiError } from '../services/api';
+import { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  signup: (email: string, username: string, password: string) => Promise<boolean>;
+  initializeUser: () => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse | null>;
+  signup: (email: string, username: string, password: string) => Promise<AuthResponse | null>;
   logout: () => void;
-  updateUser: (userData: Partial<User>) => void;
+  updateUser: (userData: Partial<User>) => Promise<void>;
   isLoading: boolean;
+  error: string | null;
+}
+
+export interface AuthResponse {
+  message: string;
+  user: User;
+  accessToken: string;
+  refreshToken: string;
+  emailVerificationRequired?: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
@@ -40,112 +38,87 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (token) {
-      // Mock getting user data from token
-      const mockUser: User = {
-        id: 'u123',
-        username: 'coolcreator',
-        email: 'user@example.com',
-        profilePicture: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150',
-        bio: 'Content creator passionate about finance and motivation',
-        balance: 500,
-        totalEarned: 2340,
-        followersCount: 1243,
-        followingCount: 89,
-        postsCount: 23,
-        isVerified: true
-      };
-      setUser(mockUser);
+  const initializeUser = async () => {
+    if (token && !user && !isLoading) {
+      setIsLoading(true);
+      try {
+        const userData = await authApi.getProfile();
+        setUser(userData);
+      } catch (err) {
+        console.error('Failed to get user profile:', err);
+        localStorage.removeItem('token');
+        setToken(null);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    setIsLoading(false);
-  }, [token]);
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email && password) {
-      const mockToken = 'jwt-token-example';
-      const mockUser: User = {
-        id: 'u123',
-        username: 'coolcreator',
-        email,
-        profilePicture: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150',
-        bio: 'Content creator passionate about finance and motivation',
-        balance: 500,
-        totalEarned: 2340,
-        followersCount: 1243,
-        followingCount: 89,
-        postsCount: 23,
-        isVerified: true
-      };
-      
-      localStorage.setItem('token', mockToken);
-      setToken(mockToken);
-      setUser(mockUser);
-      setIsLoading(false);
-      return true;
-    }
-    setIsLoading(false);
-    return false;
   };
 
-  const signup = async (email: string, username: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AuthResponse | null> => {
     setIsLoading(true);
-    // Mock API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email && username && password) {
-      const mockToken = 'jwt-token-example';
-      const mockUser: User = {
-        id: 'u' + Date.now(),
-        username,
-        email,
-        profilePicture: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150',
-        bio: '',
-        balance: 100,
-        totalEarned: 0,
-        followersCount: 0,
-        followingCount: 0,
-        postsCount: 0,
-        isVerified: false
-      };
-      
-      localStorage.setItem('token', mockToken);
-      setToken(mockToken);
-      setUser(mockUser);
+    setError(null);
+    try {
+      const response = await authApi.login({ email, password });
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      setToken(response.accessToken);
+      setUser(response.user);
+      return response;
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err?.response?.error || err?.message || 'Login failed');
+      return null;
+    } finally {
       setIsLoading(false);
-      return true;
     }
-    setIsLoading(false);
-    return false;
+  };
+
+  const signup = async (email: string, username: string, password: string): Promise<AuthResponse | null> => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await authApi.signup({ email, username, password });
+      localStorage.setItem('token', response.accessToken);
+      localStorage.setItem('refreshToken', response.refreshToken);
+      setToken(response.accessToken);
+      setUser(response.user);
+      return response;
+    } catch (err: any) {
+      console.error('Signup error:', err);
+      setError(err?.response?.error || err?.message || 'Signup failed');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     setToken(null);
     setUser(null);
+    setError(null);
   };
 
-  const updateUser = (userData: Partial<User>) => {
-    if (user) {
-      setUser({ ...user, ...userData });
+  const updateUser = async (userData: Partial<User>) => {
+    if (!user) return;
+    try {
+      const updatedUser = await authApi.updateProfile(userData);
+      setUser(updatedUser);
+    } catch (err) {
+      console.error('Failed to update user:', err);
+      setUser({ ...user, ...userData }); // optimistic update fallback
     }
   };
 
-  const value: AuthContextType = {
-    user,
-    token,
-    login,
-    signup,
-    logout,
-    updateUser,
-    isLoading
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, token, initializeUser, login, signup, logout, updateUser, isLoading, error }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };

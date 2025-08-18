@@ -4,11 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { PenTool, Users, TrendingUp, Award } from 'lucide-react';
 
 const HomePage: React.FC = () => {
-  const { user } = useAuth();
-
-  if (user) {
-    return <Navigate to="/feed" replace />;
-  }
+  const { user, token } = useAuth();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 to-white dark:from-gray-900 dark:to-gray-800">

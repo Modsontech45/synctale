@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, User, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, AlertCircle, Eye, EyeOff, Check, X } from 'lucide-react';
 
 const SignupPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,39 +10,73 @@ const SignupPage: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { signup, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    
-    if (!email || !username || !password || !confirmPassword) {
-      setError('Please fill in all fields');
-      return;
-    }
+  // Password strength validation
+  const passwordCriteria = {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+  };
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
+  const isPasswordStrong = Object.values(passwordCriteria).every(Boolean);
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
-    }
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
 
-    if (!acceptTerms) {
-      setError('You must accept the Terms and Conditions to create an account');
-      return;
-    }
-    const success = await signup(email, username, password);
-    if (success) {
+  if (!email || !username || !password || !confirmPassword) {
+    setError('Please fill in all fields');
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    setError('Passwords do not match');
+    return;
+  }
+
+  if (!isPasswordStrong) {
+    setError('Password does not meet the required criteria');
+    return;
+  }
+
+  if (!acceptTerms) {
+    setError('You must accept the Terms and Conditions to create an account');
+    return;
+  }
+
+  try {
+    // Call backend signup
+    const response = await signup(email, username, password);
+
+    console.log('Signup response:', response); // For debugging
+
+    // Redirect based on email verification status
+    if (response.emailVerificationRequired) {
+      navigate('/verify-email', { state: { email } });
+    } else {
       navigate('/feed');
+    }
+  } catch (err: any) {
+    console.error('Signup error:', err);
+
+    // Display backend error message if available
+    if (err?.response?.error) {
+      setError(err.response.error);
+    } else if (err?.message) {
+      setError(err.message);
     } else {
       setError('Failed to create account. Please try again.');
     }
-  };
+  }
+};
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -121,16 +155,52 @@ const SignupPage: React.FC = () => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className="appearance-none relative block w-full pl-12 pr-3 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full pl-12 pr-12 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
+
+            {/* Password Strength Indicator */}
+            {password && (
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-md p-4 border border-gray-200 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Password Requirements:</h4>
+                <div className="space-y-1">
+                  <div className={`flex items-center text-xs ${passwordCriteria.length ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {passwordCriteria.length ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                    At least 8 characters
+                  </div>
+                  <div className={`flex items-center text-xs ${passwordCriteria.uppercase ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {passwordCriteria.uppercase ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                    One uppercase letter
+                  </div>
+                  <div className={`flex items-center text-xs ${passwordCriteria.lowercase ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {passwordCriteria.lowercase ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                    One lowercase letter
+                  </div>
+                  <div className={`flex items-center text-xs ${passwordCriteria.number ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {passwordCriteria.number ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                    One number
+                  </div>
+                  <div className={`flex items-center text-xs ${passwordCriteria.special ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                    {passwordCriteria.special ? <Check className="w-3 h-3 mr-1" /> : <X className="w-3 h-3 mr-1" />}
+                    One special character (!@#$%^&*(),.?":{}|&lt;&gt;)
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label htmlFor="confirmPassword" className="sr-only">
@@ -141,14 +211,21 @@ const SignupPage: React.FC = () => {
                 <input
                   id="confirmPassword"
                   name="confirmPassword"
-                  type="password"
+                  type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   required
-                  className="appearance-none relative block w-full pl-12 pr-3 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
+                  className="appearance-none relative block w-full pl-12 pr-12 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
                   placeholder="Confirm Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
               </div>
             </div>
           </div>

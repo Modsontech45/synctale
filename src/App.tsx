@@ -33,18 +33,15 @@ function App() {
               <Navbar />
               <main>
                 <Routes>
-                  <Route path="/" element={<HomePage />} />
+                  <Route path="/" element={<FeedPage />} />
+                  <Route path="/home" element={<HomePage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignupPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/privacy" element={<PrivacyPage />} />
                   <Route path="/contact" element={<ContactPage />} />
                   
-                  <Route path="/feed" element={
-                    <ProtectedRoute>
-                      <FeedPage />
-                    </ProtectedRoute>
-                  } />
+                  <Route path="/feed" element={<FeedPage />} />
                   
                   <Route path="/create" element={
                     <ProtectedRoute>
