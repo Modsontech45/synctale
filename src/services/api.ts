@@ -53,23 +53,18 @@ export const apiRequest = async <T>(
 
   const url = `${API_BASE_URL}${endpoint}`;
   console.log(`[API Request] URL: ${url}`);
-  console.log("[API Request] Config:", config);
 
   try {
     const response = await fetch(url, config);
 
-    console.log("[API Response] Status:", response.status);
-    console.log("[API Response] OK:", response.ok);
-    console.log("[API Response] Headers:", Array.from(response.headers.entries()));
 
     let data: any = {};
     try {
       data = await response.json();
     } catch {
-      console.warn("[API Response] No JSON body returned");
+      // Silent handling for non-JSON responses
     }
 
-    console.log("[API Response] Data:", data);
 
     if (!response.ok) {
       // Use server-provided error or fallback to status text
@@ -81,15 +76,17 @@ export const apiRequest = async <T>(
     // If response is valid, return it as T
     return data as T;
   } catch (err: any) {
-    console.error(`[API Error] Request failed: ${url}`, err);
 
     if (err instanceof ApiError) {
       throw err; // Already handled server error
     }
 
+    // Log network errors less verbosely
+    console.warn(`[API] Network error for ${endpoint}:`, err.message);
+
     // Wrap network/fetch errors in ApiError
     throw new ApiError(
-      err?.message || "Network error or server unavailable",
+      "Unable to connect to server. Please check your connection.",
       0,
       err
     );

@@ -94,7 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           saveToSession('user', freshUser);
           saveToSession('lastActivity', now);
         } catch (err: any) {
-          if ([401, 403].includes(err.status)) clearSession();
+          console.warn('Failed to fetch user profile:', err.message);
+          // Only clear session for auth errors, not network errors
+          if (err.status && [401, 403].includes(err.status)) {
+            clearSession();
+          }
+          // For network errors, keep the cached user data
         }
       }
     } finally {

@@ -370,13 +370,13 @@ const Navbar: React.FC = () => {
                   to="/login"
                   className="text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 font-medium"
                 >
-                  {t("nav.login")}
+                  Login
                 </Link>
                 <Link
                   to="/signup"
                   className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
-                  {t("nav.signup")}
+                  Sign Up
                 </Link>
               </div>
             )}

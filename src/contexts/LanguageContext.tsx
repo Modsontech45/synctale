@@ -369,7 +369,8 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   };
 
   const t = (key: string): string => {
-    return translations[language][key as keyof typeof translations[typeof language]] || key;
+    const translation = translations[language]?.[key as keyof typeof translations[typeof language]];
+    return translation || key;
   };
 
   return (

@@ -28,6 +28,7 @@ import ChatPage from './pages/ChatPage';
 import PrivacyPage from './pages/PrivacyPage';
 import ContactPage from './pages/ContactPage';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import ErrorBoundary from './components/Layout/ErrorBoundary';
 
 const AppContent: React.FC = () => {
   const { isInitialized } = useAuth();
@@ -47,72 +48,74 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white transition-colors">
-      <Navbar />
-      <main>
-        <Routes>
-          <Route path="/" element={<FeedPage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignupPage />} />
-          <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
-          <Route path="/terms" element={<TermsPage />} />
-          <Route path="/privacy" element={<PrivacyPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          
-          <Route path="/feed" element={<FeedPage />} />
-          
-          <Route path="/create" element={
-            <ProtectedRoute>
-              <CreatePostPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/post/:id" element={<PostDetailPage />} />
-          <Route path="/profile/:id" element={<ProfilePage />} />
-          <Route path="/search" element={<SearchPage />} />
-          
-          <Route path="/notifications" element={
-            <ProtectedRoute>
-              <NotificationsPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/coins" element={
-            <ProtectedRoute>
-              <CoinsPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/earnings" element={
-            <ProtectedRoute>
-              <EarningsPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/chat" element={
-            <ProtectedRoute>
-              <ChatPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/chat/:id" element={
-            <ProtectedRoute>
-              <ChatPage />
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <SettingsPage />
-            </ProtectedRoute>
-          } />
-        </Routes>
-      </main>
-      <Footer />
-    </div>
+    <ErrorBoundary>
+      <div className="min-h-screen bg-white dark:bg-gray-900 text-black dark:text-white transition-colors">
+        <Navbar />
+        <main>
+          <Routes>
+            <Route path="/" element={<FeedPage />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
+            <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/contact" element={<ContactPage />} />
+            
+            <Route path="/feed" element={<FeedPage />} />
+            
+            <Route path="/create" element={
+              <ProtectedRoute>
+                <CreatePostPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/post/:id" element={<PostDetailPage />} />
+            <Route path="/profile/:id" element={<ProfilePage />} />
+            <Route path="/search" element={<SearchPage />} />
+            
+            <Route path="/notifications" element={
+              <ProtectedRoute>
+                <NotificationsPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/coins" element={
+              <ProtectedRoute>
+                <CoinsPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/earnings" element={
+              <ProtectedRoute>
+                <EarningsPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/chat" element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/chat/:id" element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </main>
+        <Footer />
+      </div>
+    </ErrorBoundary>
   );
 };
 function App() {

@@ -113,7 +113,7 @@ const FeedPage: React.FC = () => {
           }`}
         >
           <Clock className="w-4 h-4" />
-          <span>{t("general.recent")}</span>
+          <span>Recent</span>
         </button>
         <button
           onClick={() => handleTabChange("trending")}
@@ -124,7 +124,7 @@ const FeedPage: React.FC = () => {
           }`}
         >
           <TrendingUp className="w-4 h-4" />
-          <span>{t("general.trending")}</span>
+          <span>Trending</span>
         </button>
       </div>
 
