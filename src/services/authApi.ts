@@ -130,4 +130,19 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     });
     console.log('[authApi] Reset password response:', response);
   },
+
+  // Refresh token
+  refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
+    const response = await apiRequest<{ accessToken: string; refreshToken: string }>('/api/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken }),
+    });
+    console.log('[authApi] Refresh token response:', response);
+
+    if (!response.accessToken || !response.refreshToken) {
+      throw new ApiError('Invalid response from server', 500);
+    }
+
+    return response;
+  },
 };

@@ -25,28 +25,20 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-    // Only initialize if we have a token and no user, and we're not already loading
-    if (token && !user) {
+  const navigate = useNavigate();
   const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-        // If token is invalid, clear it
   const handleSearch = (e: React.FormEvent) => {
-        localStorage.removeItem('refreshToken');
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
     }
   };
-
-  // Initialize user when component mounts or token changes
-  React.useEffect(() => {
-    initializeUser();
-  }, [token]);
 
   const handleLogout = () => {
     logout();
@@ -227,9 +219,6 @@ const Navbar: React.FC = () => {
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
-                        {user.isVerified && (
-                          <span className="ml-1 text-green-500">✓</span>
-                        )}
                         {t("nav.logout")}
                       </button>
                     </div>
@@ -277,16 +266,16 @@ const Navbar: React.FC = () => {
                 </div>
 
                 {/* Theme Toggle */}
-           <button
-  onClick={toggleTheme}
-  className="hidden md:block p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
->
-  {theme === "light" ? (
-    <Moon className="w-5 h-5" />
-  ) : (
-    <Sun className="w-5 h-5" />
-  )}
-</button>
+                <button
+                  onClick={toggleTheme}
+                  className="hidden md:block p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                >
+                  {theme === "light" ? (
+                    <Moon className="w-5 h-5" />
+                  ) : (
+                    <Sun className="w-5 h-5" />
+                  )}
+                </button>
 
                 {/* Mobile Profile Avatar */}
                 <div className="md:hidden">
