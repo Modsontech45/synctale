@@ -54,9 +54,10 @@ const SearchPage: React.FC = () => {
             post.title.toLowerCase().includes(query.toLowerCase()) ||
             post.preview.toLowerCase().includes(query.toLowerCase()) ||
             post.category.toLowerCase().includes(query.toLowerCase())
-          console.error('Search failed:', apiError);
+          );
+          console.error('Search failed:', error);
           setError('Search failed. Please try again.');
-          setUsers(filteredUsers);
+          setPosts([]);
           setUsers([]);
         } finally {
           setLoading(false);
@@ -137,79 +138,10 @@ const SearchPage: React.FC = () => {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
           <p className="text-gray-500 dark:text-gray-400 mt-4">Searching...</p>
         </div>
-      {error ? (
-        <div className="space-y-8">
-          {/* Users Section */}
-          {displayUsers.length > 0 && (
-            <div>
-              {searchType === 'all' && (
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Users</h2>
-              )}
-              <div className="grid gap-4">
-                {displayUsers.map((user) => (
-                  <Link
-                    key={user.id}
-                    to={`/profile/${user.id}`}
-                    className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <img
-                        src={user.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                        alt={user.username}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-gray-900 dark:text-white">
-                            @{user.username}
-                          </h3>
-                          {user.isVerified && (
-                            <span className="text-primary-500">✓</span>
-                          )}
-                        </div>
-                        {user.bio && (
-                          <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
-                            {user.bio}
-                          </p>
-                        )}
-                        <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mt-2">
-                          <span>{user.followersCount} followers</span>
-                          <span>{user.postsCount} posts</span>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Posts Section */}
-          {displayPosts.length > 0 && (
-            <div>
-              {searchType === 'all' && displayUsers.length > 0 && (
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Posts</h2>
-              )}
-              <div className="space-y-8">
-                {displayPosts.map((post) => (
-                  <PostCard key={post.id} post={post} />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* No Results */}
-          {!loading && displayPosts.length === 0 && displayUsers.length === 0 && query && (
-            <div className="text-center py-12">
-              <Search className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No results found</h3>
-              <p className="text-gray-500 dark:text-gray-400">
-                Try searching with different keywords or check your spelling.
-              </p>
-            </div>
-          )}
-
-          {/* Empty State */}
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-500 dark:text-red-400">{error}</p>
+        </div>
       ) : (
         <div className="space-y-8">
           {/* Users Section */}
