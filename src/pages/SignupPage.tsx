@@ -56,11 +56,13 @@ const handleSubmit = async (e: React.FormEvent) => {
 
     console.log('Signup response:', response); // For debugging
 
-    // Redirect based on email verification status
-    if (response.emailVerificationRequired) {
-      navigate('/verify-email', { state: { email } });
-    } else {
-      navigate('/feed');
+    if (response) {
+      // Redirect based on email verification status
+      if (response.emailVerificationRequired) {
+        navigate('/verify-email', { state: { email } });
+      } else {
+        navigate('/feed');
+      }
     }
   } catch (err: any) {
     console.error('Signup error:', err);
