@@ -1,34 +1,48 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { Mail, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { Mail, Lock, AlertCircle, Eye, EyeOff } from "lucide-react";
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const from = location.state?.from?.pathname || '/feed';
+  const from = location.state?.from?.pathname || "/feed";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    
+    setError("");
+
     if (!email || !password) {
-      setError('Please fill in all fields');
+      setError("Please fill in all fields");
       return;
     }
 
-    const response = await login(email, password);
-    if (response) {
-      if (response.emailVerificationRequired) {
-        navigate('/verify-email', { state: { email } });
+    try {
+      const response = await login(email, password);
+      if (response) {
+        if (response.emailVerificationRequired) {
+          navigate("/verify-email", { state: { email } });
+        } else {
+          navigate(from, { replace: true });
+        }
+      }
+    } catch (err: any) {
+      console.error("Login error:", err);
+
+      if (err?.response?.data?.error) {
+        setError(err.response.data.error); // <-- your "Invalid credentials"
+      } else if (err?.response?.data?.message) {
+        setError(err.response.data.message);
+      } else if (err?.message) {
+        setError(err.message);
       } else {
-        navigate(from, { replace: true });
+        setError("Failed to login. Please try again.");
       }
     }
   };
@@ -41,8 +55,11 @@ const LoginPage: React.FC = () => {
             Welcome back
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
-            Don't have an account?{' '}
-            <Link to="/signup" className="font-medium text-primary-600 hover:text-primary-500">
+            Don't have an account?{" "}
+            <Link
+              to="/signup"
+              className="font-medium text-primary-600 hover:text-primary-500"
+            >
               Sign up
             </Link>
           </p>
@@ -54,7 +71,9 @@ const LoginPage: React.FC = () => {
               <div className="flex">
                 <AlertCircle className="h-5 w-5 text-red-400" />
                 <div className="ml-3">
-                  <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                  <p className="text-sm text-red-800 dark:text-red-200">
+                    {error}
+                  </p>
                 </div>
               </div>
             </div>
@@ -90,7 +109,7 @@ const LoginPage: React.FC = () => {
                 <input
                   id="password"
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   required
                   className="appearance-none relative block w-full pl-12 pr-12 py-3 border border-gray-300 dark:border-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white bg-white dark:bg-gray-800 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 focus:z-10 sm:text-sm"
@@ -103,7 +122,11 @@ const LoginPage: React.FC = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -129,7 +152,7 @@ const LoginPage: React.FC = () => {
               {isLoading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
               ) : (
-                'Sign in'
+                "Sign in"
               )}
             </button>
           </div>

@@ -12,7 +12,6 @@ export interface SignupRequest {
   password: string;
 }
 
-// Response type for login/signup
 export interface AuthResponse {
   message: string;
   user: User;
@@ -31,33 +30,28 @@ export const authApi = {
 
     console.log('[authApi] Login response:', response);
 
-    if (!response.user || !response.accessToken) {
-      throw new ApiError('Invalid response from server', 500);
+    if (!response || !response.user || !response.accessToken) {
+      throw new ApiError('Invalid response from server', 500, response);
     }
 
     return response;
   },
 
   // Register new user
-// In authApi.ts
-signup: async (userData: SignupRequest): Promise<AuthResponse> => {
-  const response = await apiRequest<AuthResponse>('/api/auth/signup', {
-    method: 'POST',
-    body: JSON.stringify(userData),
-  });
+  signup: async (userData: SignupRequest): Promise<AuthResponse> => {
+    const response = await apiRequest<AuthResponse>('/api/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
 
-  // Log the full response for debugging
-  console.log('[authApi] Signup response:', response);
+    console.log('[authApi] Signup response:', response);
 
-  if (!response || !response.user || !response.accessToken) {
-    throw new ApiError('Invalid response from server', 500);
-  }
+    if (!response || !response.user || !response.accessToken) {
+      throw new ApiError('Invalid response from server', 500, response);
+    }
 
-  // Return the full AuthResponse object
-  return response;
-},
-
-
+    return response;
+  },
 
   // Get current user profile
   getProfile: async (): Promise<User> => {
@@ -65,7 +59,7 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     console.log('[authApi] Profile response:', response);
 
     if (!response) {
-      throw new ApiError('Invalid response from server', 500);
+      throw new ApiError('Invalid response from server', 500, response);
     }
 
     return response;
@@ -80,7 +74,7 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     console.log('[authApi] Update profile response:', response);
 
     if (!response) {
-      throw new ApiError('Invalid response from server', 500);
+      throw new ApiError('Invalid response from server', 500, response);
     }
 
     return response;
@@ -88,9 +82,7 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
 
   // Logout user
   logout: async (): Promise<void> => {
-    const response = await apiRequest('/api/auth/logout', {
-      method: 'POST',
-    });
+    const response = await apiRequest('/api/auth/logout', { method: 'POST' });
     console.log('[authApi] Logout response:', response);
   },
 
@@ -104,10 +96,10 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
   },
 
   // Change password
-  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+  changePassword: async (currentPassword: string, password: string): Promise<void> => {
     const response = await apiRequest('/api/auth/change-password', {
       method: 'POST',
-      body: JSON.stringify({ currentPassword, newPassword }),
+      body: JSON.stringify({ currentPassword, password }),
     });
     console.log('[authApi] Change password response:', response);
   },
@@ -131,13 +123,15 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
   },
 
   // Reset password
-  resetPassword: async (token: string, newPassword: string): Promise<void> => {
-    const response = await apiRequest('/api/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ token, newPassword }),
-    });
-    console.log('[authApi] Reset password response:', response);
-  },
+// Reset password
+resetPassword: async (token: string, password: string): Promise<void> => {
+  const response = await apiRequest('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }), // use 'password' instead of 'newPassword'
+  });
+  console.log('[authApi] Reset password response:', response);
+},
+
 
   // Refresh token
   refreshToken: async (refreshToken: string): Promise<{ accessToken: string; refreshToken: string }> => {
@@ -148,7 +142,7 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     console.log('[authApi] Refresh token response:', response);
 
     if (!response.accessToken || !response.refreshToken) {
-      throw new ApiError('Invalid response from server', 500);
+      throw new ApiError('Invalid response from server', 500, response);
     }
 
     return response;
