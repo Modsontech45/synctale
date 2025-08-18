@@ -147,7 +147,7 @@ const ProfilePage: React.FC = () => {
         <div className="text-center mb-6">
           <img
             src={
-              user.profilePicture ||
+              user.avatar || user.profilePicture ||
               "https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=300"
             }
             alt={user.username}
@@ -242,7 +242,7 @@ const ProfilePage: React.FC = () => {
             <div className="text-center">
               <div className="flex items-center justify-center space-x-1 text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 <Coins className="w-6 h-6 text-yellow-500" />
-                <span>{user.totalEarned || 0}</span>
+                <span>{user.coinsBalance || user.balance || 0}</span>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Coins</p>
             </div>

@@ -1,5 +1,6 @@
 import { apiRequest } from './api';
 import { User } from '../types';
+import { mapUserData } from '../utils/userDataMapper';
 
 export interface SearchUsersParams {
   query: string;
@@ -31,7 +32,7 @@ export const usersApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    return mapUserData(response.data);
   },
 
   // Search users
@@ -47,7 +48,10 @@ export const usersApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    return {
+      ...response.data,
+      users: response.data.users?.map(mapUserData) || []
+    };
   },
 
   // Follow/unfollow user
@@ -71,7 +75,10 @@ export const usersApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    return {
+      ...response.data,
+      users: response.data.users?.map(mapUserData) || []
+    };
   },
 
   // Get user's following
@@ -82,7 +89,10 @@ export const usersApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    return {
+      ...response.data,
+      users: response.data.users?.map(mapUserData) || []
+    };
   },
 
   // Check if following user
@@ -104,6 +114,6 @@ export const usersApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response;
+    return mapUserData(response);
   },
 };

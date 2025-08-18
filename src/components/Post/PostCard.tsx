@@ -26,12 +26,14 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [followLoading, setFollowLoading] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
 
-  if (!post || !post.creator) return null; // Prevent undefined crashes
+  // Handle both new backend format (post.user) and legacy format (post.creator)
+  const creator = post.user || post.creator;
+  if (!post || !creator) return null; // Prevent undefined crashes
 
   // ----------------- Handlers -----------------
   const handleSendMessage = () => {
     if (!user) return navigate('/home');
-    window.location.href = `/chat/new?user=${post.creator.id}`;
+    window.location.href = `/chat/new?user=${creator.id}`;
   };
 
   const handleFollow = async () => {
@@ -40,7 +42,7 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     
     setFollowLoading(true);
     try {
-      const response = await usersApi.toggleFollow(post.creator.id);
+      const response = await usersApi.toggleFollow(creator.id);
       setIsFollowing(response.isFollowing);
     } catch (error) {
       console.error('Failed to toggle follow:', error);
@@ -139,23 +141,23 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <div className="p-6 pb-4">
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
-              <Link to={`/profile/${post.creator.id}`}>
+              <Link to={`/profile/${creator.id}`}>
                 <img
-                  src={post.creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                  alt={post.creator.username}
+                  src={creator.avatar || creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
+                  alt={creator.username}
                   className="w-10 h-10 rounded-full object-cover"
                 />
               </Link>
               <div className="flex-1">
                 <div className="flex items-center space-x-2">
                   <Link
-                    to={`/profile/${post.creator.id}`}
+                    to={`/profile/${creator.id}`}
                     className="font-medium text-gray-900 dark:text-white hover:text-green-600 dark:hover:text-green-400"
                   >
-                    @{post.creator.username}
+                    @{creator.username}
                   </Link>
-                  {post.creator.isVerified && <span className="text-green-500 text-sm">✓</span>}
-                  {user?.id !== post.creator.id && (
+                  {creator.isVerified && <span className="text-green-500 text-sm">✓</span>}
+                  {user?.id !== creator.id && (
                     <button
                       onClick={handleFollow}
                       disabled={followLoading}
@@ -274,8 +276,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
         <GiftModal
           isOpen={showGiftModal}
           onClose={() => setShowGiftModal(false)}
-          recipientId={post.creator.id}
-          recipientUsername={post.creator.username}
+          recipientId={creator.id}
+          recipientUsername={creator.username}
+          postId={post.id}
         />
       )}
     </>

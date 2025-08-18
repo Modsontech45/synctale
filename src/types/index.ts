@@ -1,17 +1,21 @@
 export interface User {
   id: string;
-  username: string;
   email: string;
-  profilePicture?: string;
+  username: string;
   bio?: string;
-  balance: number;
+  avatar?: string;
+  coinsBalance: number;
   totalEarned: number;
   followersCount: number;
   followingCount: number;
   postsCount: number;
-  isVerified?: boolean;
+  isVerified: boolean;
+  createdAt: string;
+  
+  // Legacy fields for backward compatibility
+  profilePicture?: string; // Maps to avatar
+  balance?: number; // Maps to coinsBalance
   emailVerified?: boolean;
-  createdAt?: string;
   updatedAt?: string;
 }
 
@@ -25,53 +29,91 @@ export interface Pagination {
 export interface Post {
   id: string;
   title: string;
-  category: string;
-  preview?: string;
   content: string;
-  images?: string[];
+  preview?: string;
+  category: 'Finance' | 'Motivational' | 'Relationship' | 'Health' | 'Technology' | 'Travel' | 'Food' | 'Lifestyle' | 'Education' | 'Entertainment';
+  images: string[];
   views: number;
   likes: number;
   dislikes: number;
   commentsCount: number;
   gifts: number;
-  creator: {
+  isPublished: boolean;
+  publishedAt: string;
+  createdAt: string;
+  user: User;
+  
+  // Legacy fields for backward compatibility
+  creator?: {
     id: string;
     username: string;
     profilePicture?: string;
     isVerified?: boolean;
   };
-  createdAt: string;
-  updatedAt?: string;
   isLiked?: boolean;
   isDisliked?: boolean;
+  updatedAt?: string;
 }
 
 export interface Comment {
   id: string;
   text: string;
-  creator: {
-    id: string;
-    username: string;
-    profilePicture?: string;
-  };
+  likes: number;
   createdAt: string;
-  updatedAt?: string;
-  likes?: number;
-  parentId?: string;
-}
-
-export interface Notification {
-  id: string;
-  type: 'like' | 'gift' | 'comment' | 'follow';
-  message: string;
+  user: User;
+  
+  // Legacy fields for backward compatibility
   creator?: {
     id: string;
     username: string;
     profilePicture?: string;
   };
+  parentId?: string;
+  updatedAt?: string;
+}
+
+export interface CoinTransaction {
+  id: string;
+  amount: number;
+  type: string;
+  description: string;
+  status: string;
   createdAt: string;
+  sender: User;
+  receiver: User;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
   isRead: boolean;
+  createdAt: string;
+  sourceUser: User;
+  post?: Post;
+  
+  // Legacy fields for backward compatibility
+  creator?: {
+    id: string;
+    username: string;
+    profilePicture?: string;
+  };
   relatedPostId?: string;
+}
+
+export interface ApiError {
+  error: string;
+  code: string;
+  timestamp: string;
+  path: string;
+  method: string;
+}
+
+export interface ValidationError {
+  error: string;
+  code: string;
+  details: string[];
 }
 
 export interface Payout {

@@ -1,5 +1,6 @@
 import { apiRequest, ApiError } from './api';
 import { User } from '../types';
+import { mapUserData } from '../utils/userDataMapper';
 
 export interface LoginRequest {
   email: string;
@@ -34,7 +35,10 @@ export const authApi = {
       throw new ApiError('Invalid response from server', 500, response);
     }
 
-    return response;
+    return {
+      ...response,
+      user: mapUserData(response.user)
+    };
   },
 
   // Register new user
@@ -50,7 +54,10 @@ export const authApi = {
       throw new ApiError('Invalid response from server', 500, response);
     }
 
-    return response;
+    return {
+      ...response,
+      user: mapUserData(response.user)
+    };
   },
 
   // Get current user profile
@@ -62,14 +69,21 @@ export const authApi = {
       throw new ApiError('Invalid response from server', 500, response);
     }
 
-    return response;
+    return mapUserData(response);
   },
 
   // Update user profile
   updateProfile: async (userData: Partial<User>): Promise<User> => {
+    // Map frontend data to backend format
+    const backendData = {
+      ...userData,
+      avatar: userData.avatar || userData.profilePicture,
+      coinsBalance: userData.coinsBalance || userData.balance,
+    };
+    
     const response = await apiRequest<User>('/api/auth/profile', {
       method: 'PUT',
-      body: JSON.stringify(userData),
+      body: JSON.stringify(backendData),
     });
     console.log('[authApi] Update profile response:', response);
 
@@ -77,7 +91,7 @@ export const authApi = {
       throw new ApiError('Invalid response from server', 500, response);
     }
 
-    return response;
+    return mapUserData(response);
   },
 
   // Logout user

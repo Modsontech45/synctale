@@ -24,6 +24,9 @@ const PostDetailPage: React.FC = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Handle both new backend format (post.user) and legacy format (post.creator)
+  const creator = post?.user || post?.creator;
+
   useEffect(() => {
     const fetchPost = async () => {
       if (!id) return;
@@ -39,10 +42,11 @@ const PostDetailPage: React.FC = () => {
         setIsLiked(postData.isLiked || false);
         setIsDisliked(postData.isDisliked || false);
         
+        const postCreator = postData.user || postData.creator;
         // Check if following the post creator (only if user is logged in and not viewing own post)
-        if (user && user.id !== postData.creator.id) {
+        if (user && postCreator && user.id !== postCreator.id) {
           try {
-            const followStatus = await usersApi.isFollowing(postData.creator.id);
+            const followStatus = await usersApi.isFollowing(postCreator.id);
             setIsFollowing(followStatus.isFollowing);
           } catch (err) {
             console.error('Failed to check follow status:', err);
@@ -124,11 +128,11 @@ const PostDetailPage: React.FC = () => {
   };
 
   const handleFollow = async () => {
-    if (!post || !user || actionLoading || user.id === post.creator.id) return;
+    if (!post || !creator || !user || actionLoading || user.id === creator.id) return;
     
     setActionLoading(true);
     try {
-      const response = await usersApi.toggleFollow(post.creator.id);
+      const response = await usersApi.toggleFollow(creator.id);
       setIsFollowing(response.isFollowing);
     } catch (error) {
       console.error('Failed to toggle follow:', error);
@@ -229,25 +233,25 @@ const PostDetailPage: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-4">
-            <Link to={`/profile/${post.creator.id}`}>
+            <Link to={`/profile/${creator.id}`}>
               <img
-                src={post.creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                alt={post.creator.username}
+                src={creator.avatar || creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
+                alt={creator.username}
                 className="w-12 h-12 rounded-full object-cover"
               />
             </Link>
             <div className="flex-1">
               <div className="flex items-center space-x-2">
                 <Link
-                  to={`/profile/${post.creator.id}`}
+                  to={`/profile/${creator.id}`}
                   className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400"
                 >
-                  @{post.creator.username}
+                  @{creator.username}
                 </Link>
-                {post.creator.isVerified && (
+                {creator.isVerified && (
                   <span className="text-primary-500">✓</span>
                 )}
-                {user && user.id !== post.creator.id && (
+                {user && user.id !== creator.id && (
                   <button
                     onClick={handleFollow}
                     disabled={actionLoading}
@@ -469,8 +473,9 @@ const PostDetailPage: React.FC = () => {
         <GiftModal
           isOpen={showGiftModal}
           onClose={() => setShowGiftModal(false)}
-          recipientId={post.creator.id}
-          recipientUsername={post.creator.username}
+          recipientId={creator.id}
+          recipientUsername={creator.username}
+          postId={post.id}
         />
       )}
     </>

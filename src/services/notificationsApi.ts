@@ -1,5 +1,6 @@
 import { apiRequest } from './api';
 import { Notification } from '../types';
+import { mapNotificationData } from '../utils/userDataMapper';
 
 export interface NotificationsResponse {
   notifications: Notification[];
@@ -21,7 +22,10 @@ export const notificationsApi = {
       throw new Error('Invalid response from server');
     }
     
-    return response.data;
+    return {
+      ...response.data,
+      notifications: response.data.notifications?.map(mapNotificationData) || []
+    };
   },
 
   // Mark notification as read

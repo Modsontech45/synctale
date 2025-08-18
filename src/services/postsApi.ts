@@ -1,5 +1,6 @@
 import { apiRequest } from './api';
 import { Post, Comment } from '../types';
+import { mapPostData, mapCommentData } from '../utils/userDataMapper';
 
 export interface CreatePostRequest {
   title: string;
@@ -47,7 +48,11 @@ export const postsApi = {
       if (value !== undefined) searchParams.append(key, value.toString());
     });
 
-    return apiRequest<PostsResponse>(`/api/posts?${searchParams.toString()}`);
+    return apiRequest<PostsResponse>(`/api/posts?${searchParams.toString()}`)
+      .then(response => ({
+        ...response,
+        posts: response.posts?.map(mapPostData) || []
+      }));
   },
 
   /** Get trending posts */
@@ -57,7 +62,11 @@ export const postsApi = {
       if (value !== undefined) searchParams.append(key, value.toString());
     });
 
-    return apiRequest<PostsResponse>(`/api/posts/trending?${searchParams.toString()}`);
+    return apiRequest<PostsResponse>(`/api/posts/trending?${searchParams.toString()}`)
+      .then(response => ({
+        ...response,
+        posts: response.posts?.map(mapPostData) || []
+      }));
   },
 
   /** Search posts */
@@ -68,25 +77,45 @@ export const postsApi = {
       if (value !== undefined) searchParams.append(key, value.toString());
     });
 
-    return apiRequest<PostsResponse>(`/api/posts/search?${searchParams.toString()}`);
+    return apiRequest<PostsResponse>(`/api/posts/search?${searchParams.toString()}`)
+      .then(response => ({
+        ...response,
+        posts: response.posts?.map(mapPostData) || []
+      }));
   },
 
   /** Get a single post by ID */
-  getPost: (id: string): Promise<Post> => apiRequest<Post>(`/api/posts/${id}`),
+  getPost: (id: string): Promise<Post> => 
+    apiRequest<Post>(`/api/posts/${id}`)
+      .then(mapPostData),
 
   /** Create a new post */
-  createPost: (postData: CreatePostRequest): Promise<Post> =>
+  createPost: (postData: CreatePostRequest): Promise<Post> => {
+    // Map frontend data to backend format
+    const backendData = {
+      ...postData,
+      images: postData.images || []
+    };
+    
     apiRequest<Post>('/api/posts', {
       method: 'POST',
-      body: JSON.stringify(postData),
-    }),
+      body: JSON.stringify(backendData),
+    }).then(mapPostData);
+  },
 
   /** Update an existing post */
-  updatePost: (id: string, postData: UpdatePostRequest): Promise<Post> =>
+  updatePost: (id: string, postData: UpdatePostRequest): Promise<Post> => {
+    // Map frontend data to backend format
+    const backendData = {
+      ...postData,
+      images: postData.images || []
+    };
+    
     apiRequest<Post>(`/api/posts/${id}`, {
       method: 'PUT',
-      body: JSON.stringify(postData),
-    }),
+      body: JSON.stringify(backendData),
+    }).then(mapPostData);
+  },
 
   /** Delete a post */
   deletePost: (id: string): Promise<void> =>
@@ -102,7 +131,11 @@ export const postsApi = {
 
   /** Get comments for a post with optional pagination */
   getComments: (postId: string, page = 1, limit = 20): Promise<{ comments: Comment[]; pagination: any }> =>
-    apiRequest(`/api/posts/${postId}/comments?page=${page}&limit=${limit}`),
+    apiRequest(`/api/posts/${postId}/comments?page=${page}&limit=${limit}`)
+      .then(response => ({
+        ...response,
+        comments: response.comments?.map(mapCommentData) || []
+      })),
 
   /** Create a new comment */
   createComment: (commentData: CreateCommentRequest): Promise<Comment> =>
@@ -111,15 +144,24 @@ export const postsApi = {
   /** Delete a comment */
   deleteComment: (id: string): Promise<void> =>
     apiRequest(`/api/comments/${id}`, { method: 'DELETE' }),
+      .then(mapCommentData),
 
   /** Get posts created by a specific user */
   getUserPosts: (userId: string, page = 1, limit = 10): Promise<PostsResponse> =>
-    apiRequest(`/api/users/${userId}/posts?page=${page}&limit=${limit}`),
+    apiRequest(`/api/users/${userId}/posts?page=${page}&limit=${limit}`)
+      .then(response => ({
+        ...response,
+        posts: response.posts?.map(mapPostData) || []
+      })),
 
   // Legacy method for backward compatibility
   /** @deprecated Use searchPosts instead */
   searchPostsLegacy: (query: string, page = 1, limit = 10): Promise<PostsResponse> =>
-    apiRequest(`/api/posts/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
+    apiRequest(`/api/posts/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`)
+      .then(response => ({
+        ...response,
+        posts: response.posts?.map(mapPostData) || []
+      })),
 
   /** Gift coins to a post creator */
   giftCoins: (postId: string, amount: number, message?: string): Promise<{ success: boolean; message: string }> =>
