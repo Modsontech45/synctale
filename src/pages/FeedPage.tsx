@@ -27,11 +27,18 @@ const FeedPage: React.FC = () => {
       try {
         console.log(`[FeedPage] Fetching posts, tab: ${activeTab}`);
 
-        const response = await postsApi.getPosts({
-          page: 1,
-          limit: 10,
-          sort: sortParam,
-        });
+        let response;
+        if (activeTab === "trending") {
+          response = await postsApi.getTrendingPosts({
+            page: 1,
+            limit: 10,
+          });
+        } else {
+          response = await postsApi.getPosts({
+            page: 1,
+            limit: 10,
+          });
+        }
 
         console.log("[FeedPage] Raw API response:", response);
 

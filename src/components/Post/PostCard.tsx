@@ -43,6 +43,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       setIsDisliked(false);
       setDislikes((prev) => prev - 1);
     }
+    
+    // Call API in real implementation
+    // postsApi.likePost(post.id).catch(console.error);
   };
 
   const handleDislike = () => {
@@ -53,6 +56,9 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
       setIsLiked(false);
       setLikes((prev) => prev - 1);
     }
+    
+    // Call API in real implementation
+    // postsApi.dislikePost(post.id).catch(console.error);
   };
 
 const username = post.user?.username || post.creator?.username || "Unknown";

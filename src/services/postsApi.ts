@@ -8,6 +8,13 @@ export interface CreatePostRequest {
   images?: string[];
 }
 
+export interface UpdatePostRequest {
+  title?: string;
+  content?: string;
+  category?: string;
+  images?: string[];
+}
+
 export interface GetPostsParams {
   page?: number;
   limit?: number;
@@ -43,6 +50,27 @@ export const postsApi = {
     return apiRequest<PostsResponse>(`/api/posts?${searchParams.toString()}`);
   },
 
+  /** Get trending posts */
+  getTrendingPosts: (params: Omit<GetPostsParams, 'sort'> = {}): Promise<PostsResponse> => {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) searchParams.append(key, value.toString());
+    });
+
+    return apiRequest<PostsResponse>(`/api/posts/trending?${searchParams.toString()}`);
+  },
+
+  /** Search posts */
+  searchPosts: (query: string, params: Omit<GetPostsParams, 'search'> = {}): Promise<PostsResponse> => {
+    const searchParams = new URLSearchParams();
+    searchParams.append('q', query);
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) searchParams.append(key, value.toString());
+    });
+
+    return apiRequest<PostsResponse>(`/api/posts/search?${searchParams.toString()}`);
+  },
+
   /** Get a single post by ID */
   getPost: (id: string): Promise<Post> => apiRequest<Post>(`/api/posts/${id}`),
 
@@ -54,7 +82,7 @@ export const postsApi = {
     }),
 
   /** Update an existing post */
-  updatePost: (id: string, postData: Partial<CreatePostRequest>): Promise<Post> =>
+  updatePost: (id: string, postData: UpdatePostRequest): Promise<Post> =>
     apiRequest<Post>(`/api/posts/${id}`, {
       method: 'PUT',
       body: JSON.stringify(postData),
@@ -65,11 +93,11 @@ export const postsApi = {
     apiRequest(`/api/posts/${id}`, { method: 'DELETE' }),
 
   /** Like/unlike a post */
-  toggleLike: (id: string): Promise<{ isLiked: boolean; likes: number }> =>
+  likePost: (id: string): Promise<{ isLiked: boolean; likes: number }> =>
     apiRequest(`/api/posts/${id}/like`, { method: 'POST' }),
 
   /** Dislike/undislike a post */
-  toggleDislike: (id: string): Promise<{ isDisliked: boolean; dislikes: number }> =>
+  dislikePost: (id: string): Promise<{ isDisliked: boolean; dislikes: number }> =>
     apiRequest(`/api/posts/${id}/dislike`, { method: 'POST' }),
 
   /** Get comments for a post with optional pagination */
@@ -88,7 +116,8 @@ export const postsApi = {
   getUserPosts: (userId: string, page = 1, limit = 10): Promise<PostsResponse> =>
     apiRequest(`/api/users/${userId}/posts?page=${page}&limit=${limit}`),
 
-  /** Search posts by query */
-  searchPosts: (query: string, page = 1, limit = 10): Promise<PostsResponse> =>
+  // Legacy method for backward compatibility
+  /** @deprecated Use searchPosts instead */
+  searchPostsLegacy: (query: string, page = 1, limit = 10): Promise<PostsResponse> =>
     apiRequest(`/api/posts/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
 };

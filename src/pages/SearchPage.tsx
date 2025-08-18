@@ -103,27 +103,38 @@ const SearchPage: React.FC = () => {
     // Simulate API search
     setTimeout(() => {
       if (query.trim()) {
-        // Filter posts by title or content
-        const filteredPosts = mockPosts.filter(post =>
-          post.title.toLowerCase().includes(query.toLowerCase()) ||
-          post.preview.toLowerCase().includes(query.toLowerCase()) ||
-          post.category.toLowerCase().includes(query.toLowerCase())
-        );
-
-        // Filter users by username
-        const filteredUsers = mockUsers.filter(user =>
-          user.username.toLowerCase().includes(query.toLowerCase()) ||
-          user.bio?.toLowerCase().includes(query.toLowerCase())
-        );
-
-        setPosts(filteredPosts);
-        setUsers(filteredUsers);
+        try {
+          // Search posts using the API
+          const postsResponse = await postsApi.searchPosts(query, { page: 1, limit: 10 });
+          setPosts(postsResponse.posts || []);
+          
+          // For now, use mock users until user search API is implemented
+          const filteredUsers = mockUsers.filter(user =>
+            user.username.toLowerCase().includes(query.toLowerCase()) ||
+            user.bio?.toLowerCase().includes(query.toLowerCase())
+          );
+          setUsers(filteredUsers);
+        } catch (error) {
+          console.error('Search failed:', error);
+          // Fallback to mock data
+          const filteredPosts = mockPosts.filter(post =>
+            post.title.toLowerCase().includes(query.toLowerCase()) ||
+            post.preview.toLowerCase().includes(query.toLowerCase()) ||
+            post.category.toLowerCase().includes(query.toLowerCase())
+          );
+          const filteredUsers = mockUsers.filter(user =>
+            user.username.toLowerCase().includes(query.toLowerCase()) ||
+            user.bio?.toLowerCase().includes(query.toLowerCase())
+          );
+          setPosts(filteredPosts);
+          setUsers(filteredUsers);
+        }
       } else {
         setPosts([]);
         setUsers([]);
       }
       setLoading(false);
-    }, 1000);
+    }, 500);
   }, [query]);
 
   const displayPosts = searchType === 'users' ? [] : posts;

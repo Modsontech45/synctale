@@ -149,6 +149,9 @@ These strategies might seem simple, but consistency is key. Start with one or tw
         setIsDisliked(false);
       }
     }
+    
+    // Call API in real implementation
+    // postsApi.likePost(post.id).catch(console.error);
   };
 
   const handleDislike = () => {
@@ -163,6 +166,9 @@ These strategies might seem simple, but consistency is key. Start with one or tw
         setIsLiked(false);
       }
     }
+    
+    // Call API in real implementation
+    // postsApi.dislikePost(post.id).catch(console.error);
   };
 
   const handleShare = async () => {
