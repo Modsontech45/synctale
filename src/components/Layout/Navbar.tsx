@@ -25,20 +25,28 @@ const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
-  const navigate = useNavigate();
+    // Only initialize if we have a token and no user, and we're not already loading
+    if (token && !user) {
   const location = useLocation();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showLanguageMenu, setShowLanguageMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+        // If token is invalid, clear it
   const handleSearch = (e: React.FormEvent) => {
+        localStorage.removeItem('refreshToken');
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery("");
     }
   };
+
+  // Initialize user when component mounts or token changes
+  React.useEffect(() => {
+    initializeUser();
+  }, [token]);
 
   const handleLogout = () => {
     logout();

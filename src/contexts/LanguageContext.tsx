@@ -39,6 +39,16 @@ const translations = {
     'auth.fillAllFields': 'Please fill in all fields',
     'auth.passwordsDoNotMatch': 'Passwords do not match',
     'auth.passwordTooShort': 'Password must be at least 6 characters long',
+    'auth.emailVerificationSent': 'Verification email sent! Please check your inbox.',
+    'auth.emailVerified': 'Email verified successfully!',
+    'auth.passwordResetSent': 'Password reset instructions sent to your email.',
+    'auth.passwordResetSuccess': 'Password reset successfully!',
+    'auth.forgotPassword': 'Forgot Password?',
+    'auth.resetPassword': 'Reset Password',
+    'auth.verifyEmail': 'Verify Email',
+    'auth.resendVerification': 'Resend Verification',
+    'auth.backToLogin': 'Back to Login',
+    'auth.checkEmail': 'Check Your Email',
     
     // Posts
     'post.like': 'Like',
@@ -195,6 +205,16 @@ const translations = {
     'auth.fillAllFields': 'Veuillez remplir tous les champs',
     'auth.passwordsDoNotMatch': 'Les mots de passe ne correspondent pas',
     'auth.passwordTooShort': 'Le mot de passe doit contenir au moins 6 caractères',
+    'auth.emailVerificationSent': 'Email de vérification envoyé ! Vérifiez votre boîte de réception.',
+    'auth.emailVerified': 'Email vérifié avec succès !',
+    'auth.passwordResetSent': 'Instructions de réinitialisation envoyées à votre email.',
+    'auth.passwordResetSuccess': 'Mot de passe réinitialisé avec succès !',
+    'auth.forgotPassword': 'Mot de passe oublié ?',
+    'auth.resetPassword': 'Réinitialiser le mot de passe',
+    'auth.verifyEmail': 'Vérifier l\'email',
+    'auth.resendVerification': 'Renvoyer la vérification',
+    'auth.backToLogin': 'Retour à la connexion',
+    'auth.checkEmail': 'Vérifiez votre email',
     
     // Posts
     'post.like': 'Aimer',

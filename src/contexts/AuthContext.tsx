@@ -81,10 +81,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     try {
       const response = await authApi.signup({ email, username, password });
-      localStorage.setItem('token', response.accessToken);
-      localStorage.setItem('refreshToken', response.refreshToken);
-      setToken(response.accessToken);
-      setUser(response.user);
+      
+      // Only set tokens and user if email verification is not required
+      if (!response.emailVerificationRequired) {
+        localStorage.setItem('token', response.accessToken);
+        localStorage.setItem('refreshToken', response.refreshToken);
+        setToken(response.accessToken);
+        setUser(response.user);
+      }
+      
       return response;
     } catch (err: any) {
       console.error('Signup error:', err);

@@ -86,6 +86,15 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     return response;
   },
 
+  // Resend email verification
+  resendVerificationEmail: async (email: string): Promise<void> => {
+    const response = await apiRequest('/api/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    console.log('[authApi] Resend verification response:', response);
+  },
+
   // Change password
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
     const response = await apiRequest('/api/auth/change-password', {
