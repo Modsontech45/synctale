@@ -61,7 +61,7 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
 
   // Get current user profile
   getProfile: async (): Promise<User> => {
-    const response = await apiRequest<User>('/api/auth/profile');
+    const response = await apiRequest<User>('/api/auth/me');
     console.log('[authApi] Profile response:', response);
 
     if (!response) {
@@ -84,6 +84,14 @@ signup: async (userData: SignupRequest): Promise<AuthResponse> => {
     }
 
     return response;
+  },
+
+  // Logout user
+  logout: async (): Promise<void> => {
+    const response = await apiRequest('/api/auth/logout', {
+      method: 'POST',
+    });
+    console.log('[authApi] Logout response:', response);
   },
 
   // Resend email verification

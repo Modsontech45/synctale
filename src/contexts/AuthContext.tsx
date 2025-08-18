@@ -101,6 +101,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
+    // Call backend logout endpoint (optional - for session cleanup)
+    if (token) {
+      authApi.logout().catch(err => console.error('Logout API call failed:', err));
+    }
+    
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     setToken(null);
