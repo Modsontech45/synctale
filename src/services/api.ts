@@ -1,5 +1,6 @@
 // Base API configuration and utilities
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
+import { optimizedApiRequest, requestCache } from '../utils/requestOptimization';
 
 export interface Pagination {
   page: number;
@@ -28,6 +29,11 @@ export class ApiError extends Error {
 
 // Get auth token from localStorage
 const getAuthToken = (): string | null => localStorage.getItem("token");
+
+// Clear cache when user logs out
+export const clearApiCache = () => {
+  requestCache.clear();
+};
 
 // Base fetch wrapper with logging and improved error handling
 export const apiRequest = async <T>(
@@ -88,4 +94,24 @@ export const apiRequest = async <T>(
       err
     );
   }
+};
+
+// Optimized API request with caching and retry logic
+export const cachedApiRequest = async <T>(
+  endpoint: string,
+  options: RequestInit = {},
+  cacheOptions?: {
+    cache?: boolean;
+    cacheTTL?: number;
+    retry?: boolean;
+    maxRetries?: number;
+  }
+): Promise<T> => {
+  const cacheKey = `${endpoint}_${JSON.stringify(options)}`;
+  
+  return optimizedApiRequest(
+    cacheKey,
+    () => apiRequest<T>(endpoint, options),
+    cacheOptions
+  );
 };

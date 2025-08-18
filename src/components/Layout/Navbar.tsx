@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import { useTheme } from "../../contexts/ThemeContext";
 import { useLanguage } from "../../contexts/LanguageContext";
+import { useDebounce, useThrottle } from "../../utils/requestOptimization";
 import { useSessionManager } from "../../hooks/useSessionManager";
 import {
   Search,
@@ -34,22 +35,30 @@ const Navbar: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // Debounce search query
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
   // Refresh user data when component mounts
   useEffect(() => {
     if (user) {
-      refreshUserData();
+      // Only refresh if user data is stale (older than 5 minutes)
+      const lastActivity = sessionStorage.getItem('lastActivity');
+      if (!lastActivity || Date.now() - parseInt(lastActivity) > 5 * 60 * 1000) {
+        refreshUserData();
+      }
     }
-  }, [user?.id, refreshUserData]); // Only refresh when user ID changes
+  }, [user?.id]); // Only refresh when user ID changes
+
   // Update activity on user interactions
-  const handleUserActivity = () => {
+  const handleUserActivity = useThrottle(() => {
     updateActivity();
-  };
+  }, 10000); // Throttle activity updates to once per 10 seconds
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     handleUserActivity();
-    if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    if (debouncedSearchQuery.trim()) {
+      navigate(`/search?q=${encodeURIComponent(debouncedSearchQuery.trim())}`);
       setSearchQuery("");
     }
   };

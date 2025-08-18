@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { apiRequest, cachedApiRequest } from './api';
 import { Post, Comment } from '../types';
 import { mapPostData, mapCommentData } from '../utils/userDataMapper';
 
@@ -48,7 +48,11 @@ export const postsApi = {
       if (value !== undefined) searchParams.append(key, value.toString());
     });
 
-    return apiRequest<PostsResponse>(`/api/posts?${searchParams.toString()}`)
+    return cachedApiRequest<PostsResponse>(
+      `/api/posts?${searchParams.toString()}`,
+      {},
+      { cacheTTL: 2 * 60 * 1000 } // Cache for 2 minutes
+    )
       .then(response => ({
         ...response,
         posts: response.posts?.map(mapPostData) || []
@@ -62,7 +66,11 @@ export const postsApi = {
       if (value !== undefined) searchParams.append(key, value.toString());
     });
 
-    return apiRequest<PostsResponse>(`/api/posts/trending?${searchParams.toString()}`)
+    return cachedApiRequest<PostsResponse>(
+      `/api/posts/trending?${searchParams.toString()}`,
+      {},
+      { cacheTTL: 5 * 60 * 1000 } // Cache trending for 5 minutes
+    )
       .then(response => ({
         ...response,
         posts: response.posts?.map(mapPostData) || []
@@ -86,7 +94,11 @@ export const postsApi = {
 
   /** Get a single post by ID */
   getPost: (id: string): Promise<Post> => 
-    apiRequest<Post>(`/api/posts/${id}`)
+    cachedApiRequest<Post>(
+      `/api/posts/${id}`,
+      {},
+      { cacheTTL: 3 * 60 * 1000 } // Cache post for 3 minutes
+    )
       .then(mapPostData),
 
   /** Create a new post */
@@ -131,7 +143,11 @@ export const postsApi = {
 
   /** Get comments for a post with optional pagination */
   getComments: (postId: string, page = 1, limit = 20): Promise<{ comments: Comment[]; pagination: any }> =>
-    apiRequest(`/api/posts/${postId}/comments?page=${page}&limit=${limit}`)
+    cachedApiRequest(
+      `/api/posts/${postId}/comments?page=${page}&limit=${limit}`,
+      {},
+      { cacheTTL: 1 * 60 * 1000 } // Cache comments for 1 minute
+    )
       .then(response => ({
         ...response,
         comments: response.comments?.map(mapCommentData) || []
@@ -147,7 +163,11 @@ export const postsApi = {
 
   /** Get posts created by a specific user */
   getUserPosts: (userId: string, page = 1, limit = 10): Promise<PostsResponse> =>
-    apiRequest(`/api/users/${userId}/posts?page=${page}&limit=${limit}`)
+    cachedApiRequest(
+      `/api/users/${userId}/posts?page=${page}&limit=${limit}`,
+      {},
+      { cacheTTL: 2 * 60 * 1000 } // Cache user posts for 2 minutes
+    )
       .then(response => ({
         ...response,
         posts: response.posts?.map(mapPostData) || []

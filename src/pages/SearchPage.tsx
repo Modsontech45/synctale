@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import { useDebounce } from '../utils/requestOptimization';
 import { Search, Users, FileText, Filter } from 'lucide-react';
 import { User, Post } from '../types';
 import { postsApi } from '../services/postsApi';
@@ -15,20 +16,21 @@ const SearchPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Debounce search query to prevent excessive API calls
+  const debouncedQuery = useDebounce(query, 500);
+
   useEffect(() => {
-    setLoading(true);
-    
     // Define async function for API calls
     const performSearch = async () => {
-      if (query.trim()) {
+      if (debouncedQuery.trim()) {
         setLoading(true);
         setError(null);
         
         try {
           // Search posts and users in parallel
           const [postsResponse, usersResponse] = await Promise.allSettled([
-            postsApi.searchPosts(query, { page: 1, limit: 10 }),
-            usersApi.searchUsers({ query, page: 1, limit: 10 })
+            postsApi.searchPosts(debouncedQuery, { page: 1, limit: 10 }),
+            usersApi.searchUsers({ query: debouncedQuery, page: 1, limit: 10 })
           ]);
           
           // Handle posts response
@@ -51,9 +53,9 @@ const SearchPage: React.FC = () => {
           console.error('Search failed:', error);
           // Fallback to mock data
           const filteredPosts = mockPosts.filter(post =>
-            post.title.toLowerCase().includes(query.toLowerCase()) ||
-            post.preview.toLowerCase().includes(query.toLowerCase()) ||
-            post.category.toLowerCase().includes(query.toLowerCase())
+            post.title.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+            post.preview.toLowerCase().includes(debouncedQuery.toLowerCase()) ||
+            post.category.toLowerCase().includes(debouncedQuery.toLowerCase())
           );
           console.error('Search failed:', error);
           setError('Search failed. Please try again.');
@@ -71,9 +73,8 @@ const SearchPage: React.FC = () => {
     };
 
     // Execute search with delay
-    const timeoutId = setTimeout(performSearch, 500);
-    return () => clearTimeout(timeoutId);
-  }, [query]);
+    performSearch();
+  }, [debouncedQuery]);
 
   const displayPosts = searchType === 'users' ? [] : posts;
   const displayUsers = searchType === 'posts' ? [] : users;

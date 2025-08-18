@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useThrottle } from '../../utils/requestOptimization';
 import { Post } from '../../types';
 import { Heart, MessageCircle, Share2, Gift, ThumbsDown, MoreHorizontal, UserPlus, Eye, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +27,61 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [followLoading, setFollowLoading] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
 
+  // Throttle interaction functions to prevent spam
+  const throttledLike = useThrottle(async () => {
+    if (!user || likeLoading) return;
+    
+    setLikeLoading(true);
+    try {
+      const response = await postsApi.likePost(post.id);
+      setIsLiked(response.isLiked);
+      setLikes(response.likes);
+      
+      if (response.isLiked && isDisliked) {
+        setIsDisliked(false);
+        setDislikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to like post:', error);
+    } finally {
+      setLikeLoading(false);
+    }
+  }, 1000);
+
+  const throttledDislike = useThrottle(async () => {
+    if (!user || likeLoading) return;
+    
+    setLikeLoading(true);
+    try {
+      const response = await postsApi.dislikePost(post.id);
+      setIsDisliked(response.isDisliked);
+      setDislikes(response.dislikes);
+      
+      if (response.isDisliked && isLiked) {
+        setIsLiked(false);
+        setLikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to dislike post:', error);
+    } finally {
+      setLikeLoading(false);
+    }
+  }, 1000);
+
+  const throttledFollow = useThrottle(async () => {
+    if (!user || followLoading) return;
+    
+    setFollowLoading(true);
+    try {
+      const response = await usersApi.toggleFollow(creator.id);
+      setIsFollowing(response.isFollowing);
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    } finally {
+      setFollowLoading(false);
+    }
+  }, 2000);
+
   // Handle both new backend format (post.user) and legacy format (post.creator)
   const creator = post.user || post.creator;
   if (!post || !creator) return null; // Prevent undefined crashes
@@ -38,61 +94,17 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
 
   const handleFollow = async () => {
     if (!user) return navigate('/home');
-    if (followLoading) return;
-    
-    setFollowLoading(true);
-    try {
-      const response = await usersApi.toggleFollow(creator.id);
-      setIsFollowing(response.isFollowing);
-    } catch (error) {
-      console.error('Failed to toggle follow:', error);
-    } finally {
-      setFollowLoading(false);
-    }
+    throttledFollow();
   };
 
   const handleLike = async () => {
     if (!user) return navigate('/home');
-    if (likeLoading) return;
-    
-    setLikeLoading(true);
-    try {
-      const response = await postsApi.likePost(post.id);
-      setIsLiked(response.isLiked);
-      setLikes(response.likes);
-      
-      // If we liked and were previously disliking, update dislike state
-      if (response.isLiked && isDisliked) {
-        setIsDisliked(false);
-        setDislikes(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Failed to like post:', error);
-    } finally {
-      setLikeLoading(false);
-    }
+    throttledLike();
   };
 
   const handleDislike = async () => {
     if (!user) return navigate('/home');
-    if (likeLoading) return;
-    
-    setLikeLoading(true);
-    try {
-      const response = await postsApi.dislikePost(post.id);
-      setIsDisliked(response.isDisliked);
-      setDislikes(response.dislikes);
-      
-      // If we disliked and were previously liking, update like state
-      if (response.isDisliked && isLiked) {
-        setIsLiked(false);
-        setLikes(prev => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.error('Failed to dislike post:', error);
-    } finally {
-      setLikeLoading(false);
-    }
+    throttledDislike();
   };
 
   const handleGiftClick = () => {

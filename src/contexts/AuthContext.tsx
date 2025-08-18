@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { authApi } from '../services/authApi';
+import { clearApiCache } from '../services/api';
+import { useThrottle } from '../utils/requestOptimization';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -41,7 +43,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const REFRESH_INTERVAL = 60 * 1000; // 1 minute
+  const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes (reduced frequency)
   let lastRefresh = 0;
 
   // ----------------- Session Utilities -----------------
@@ -61,6 +63,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const clearSession = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    clearApiCache(); // Clear API cache on logout
     removeFromSession('user');
     removeFromSession('lastActivity');
     setToken(null);
@@ -101,7 +104,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // ----------------- Refresh User Data (Throttled) -----------------
-  const refreshUserData = async () => {
+  const refreshUserDataInternal = async () => {
     if (!token) return;
     const now = Date.now();
     if (now - lastRefresh < REFRESH_INTERVAL) return;
@@ -117,10 +120,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Throttle refresh requests to prevent excessive calls
+  const refreshUserData = useThrottle(refreshUserDataInternal, 30000); // Max once per 30 seconds
+
   // ----------------- Visibility / Focus Handling -----------------
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (!document.hidden && user) refreshUserData();
+      if (!document.hidden && user && token) {
+        // Only refresh if page has been hidden for more than 5 minutes
+        const lastActivity = getFromSession('lastActivity');
+        if (!lastActivity || Date.now() - lastActivity > 5 * 60 * 1000) {
+          refreshUserData();
+        }
+      }
     };
 
     window.addEventListener('focus', handleVisibilityChange);
@@ -172,16 +184,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // ----------------- Update User -----------------
   const updateUser = async (userData: Partial<User>) => {
     if (!user) return;
+    
+    // Optimistic update first
+    const optimisticUser = { ...user, ...userData };
+    setUser(optimisticUser);
+    saveToSession('user', optimisticUser);
+    saveToSession('lastActivity', Date.now());
+    
     try {
       const updatedUser = await authApi.updateProfile(userData);
       setUser(updatedUser);
       saveToSession('user', updatedUser);
-      saveToSession('lastActivity', Date.now());
-    } catch {
-      const optimisticUser = { ...user, ...userData };
-      setUser(optimisticUser);
-      saveToSession('user', optimisticUser);
-      saveToSession('lastActivity', Date.now());
+    } catch (error) {
+      console.error('Failed to update user profile:', error);
+      // Revert optimistic update on error
+      setUser(user);
+      saveToSession('user', user);
     }
   };
 

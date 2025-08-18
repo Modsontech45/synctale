@@ -1,4 +1,4 @@
-import { apiRequest } from './api';
+import { apiRequest, cachedApiRequest } from './api';
 import { User } from '../types';
 import { mapUserData } from '../utils/userDataMapper';
 
@@ -26,7 +26,11 @@ export interface FollowResponse {
 export const usersApi = {
   // Get user by ID
   getUser: async (id: string): Promise<User> => {
-    const response = await apiRequest<User>(`/api/users/${id}`);
+    const response = await cachedApiRequest<User>(
+      `/api/users/${id}`,
+      {},
+      { cacheTTL: 5 * 60 * 1000 } // Cache user data for 5 minutes
+    );
     
     if (!response.data) {
       throw new Error('Invalid response from server');
@@ -108,7 +112,11 @@ export const usersApi = {
 
   // Get user profile by ID
   getUserProfile: async (id: string): Promise<User> => {
-    const response = await apiRequest<User>(`/api/users/${id}/profile`);
+    const response = await cachedApiRequest<User>(
+      `/api/users/${id}/profile`,
+      {},
+      { cacheTTL: 3 * 60 * 1000 } // Cache profile for 3 minutes
+    );
     
     if (!response) {
       throw new Error('Invalid response from server');

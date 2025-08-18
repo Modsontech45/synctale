@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import { useDebounce } from "../utils/requestOptimization";
 import { User, Post } from "../types";
 import { useAuth } from "../contexts/AuthContext";
 import { usersApi } from "../services/usersApi";
@@ -26,7 +27,11 @@ const ProfilePage: React.FC = () => {
     "posts" | "followers" | "following"
   >("posts");
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Debounce the user ID to prevent excessive API calls
+  const debouncedUserId = useDebounce(id, 300);
 
   if (!isInitialized) {
     return (
@@ -40,7 +45,7 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!id) return;
+      if (!debouncedUserId) return;
       
       setLoading(true);
       setError(null);
@@ -62,7 +67,7 @@ const ProfilePage: React.FC = () => {
         // Check if following this user (only for other users)
         if (!isOwnProfile && currentUser) {
           try {
-            const followStatus = await usersApi.isFollowing(id);
+            const followStatus = await usersApi.isFollowing(debouncedUserId);
             setIsFollowing(followStatus.isFollowing);
           } catch (err) {
             console.error('Failed to check follow status:', err);
@@ -78,15 +83,15 @@ const ProfilePage: React.FC = () => {
     };
 
     fetchProfile();
-  }, [id, currentUser, isOwnProfile, refreshUserData]);
+  }, [debouncedUserId, currentUser, isOwnProfile, refreshUserData]);
 
   useEffect(() => {
     const fetchPosts = async () => {
-      if (!id) return;
+      if (!debouncedUserId) return;
       
       setPostsLoading(true);
       try {
-        const postsResponse = await postsApi.getUserPosts(id, 1, 10);
+        const postsResponse = await postsApi.getUserPosts(debouncedUserId, 1, 10);
         setPosts(postsResponse.posts || []);
       } catch (err) {
         console.error("Failed to fetch user posts:", err);
@@ -96,14 +101,15 @@ const ProfilePage: React.FC = () => {
       }
     };
 
-    if (user && activeTab === 'posts') {
+    if (user && activeTab === 'posts' && debouncedUserId) {
       fetchPosts();
     }
-  }, [id, user, activeTab]);
+  }, [debouncedUserId, user, activeTab]);
 
   const handleFollow = async () => {
-    if (!user || !currentUser || isOwnProfile) return;
+    if (!user || !currentUser || isOwnProfile || followLoading) return;
     
+    setFollowLoading(true);
     try {
       const response = await usersApi.toggleFollow(user.id);
       setIsFollowing(response.isFollowing);
@@ -113,6 +119,8 @@ const ProfilePage: React.FC = () => {
       });
     } catch (err) {
       console.error('Failed to toggle follow:', err);
+    } finally {
+      setFollowLoading(false);
     }
   };
 
