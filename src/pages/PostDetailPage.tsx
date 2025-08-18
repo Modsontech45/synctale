@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { Post, Comment } from '../types';
 import { Heart, MessageCircle, Share2, Gift, ThumbsDown, UserPlus, Send } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { postsApi } from '../services/postsApi';
+import { usersApi } from '../services/usersApi';
 import GiftModal from '../components/Modals/GiftModal';
 
 const PostDetailPage: React.FC = () => {
@@ -12,166 +14,132 @@ const PostDetailPage: React.FC = () => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [isDisliked, setIsDisliked] = useState(false);
   const [likes, setLikes] = useState(0);
   const [dislikes, setDislikes] = useState(0);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
-
-  // Mock data
-  const mockPost: Post = {
-    id: 'p101',
-    title: '5 Ways to Save Money This Year',
-    category: 'Finance',
-    preview: 'Learn the top 5 strategies that helped me save over $10,000 last year.',
-    content: `# 5 Ways to Save Money This Year
-
-Money management is one of the most important skills you can develop. After years of trial and error, I've discovered these five powerful strategies that helped me save over $10,000 last year.
-
-## 1. Create a Detailed Budget
-
-The foundation of saving money is knowing exactly where your money goes. I recommend:
-
-- Track every expense for at least one month
-- Use apps like Mint or YNAB to categorize spending
-- Set realistic limits for each category
-- Review and adjust monthly
-
-## 2. Automate Your Savings
-
-Make saving effortless by automating it:
-
-- Set up automatic transfers to your savings account
-- Start with just $50 per week if you're a beginner
-- Increase the amount by $10 every month
-- Treat savings like a non-negotiable bill
-
-## 3. Cut Subscription Services
-
-Most people pay for subscriptions they don't use:
-
-- Audit all your monthly subscriptions
-- Cancel anything you haven't used in 30 days
-- Consider sharing family plans with friends or family
-- Use free alternatives when possible
-
-## 4. Cook More Meals at Home
-
-Eating out is one of the biggest budget killers:
-
-- Plan your meals for the week
-- Buy groceries with a list and stick to it
-- Batch cook on weekends
-- Learn 5-10 simple recipes you enjoy
-
-## 5. Use the 24-Hour Rule
-
-Before making any non-essential purchase over $50:
-
-- Wait 24 hours before buying
-- Ask yourself if you really need it
-- Consider if you have something similar already
-- Think about your long-term financial goals
-
-These strategies might seem simple, but consistency is key. Start with one or two strategies and gradually implement the others. Your future self will thank you!`,
-    images: ['https://images.pexels.com/photos/164527/pexels-photo-164527.jpeg?auto=compress&cs=tinysrgb&w=800'],
-    likes: 24,
-    dislikes: 2,
-    commentsCount: 5,
-    gifts: 120,
-    creator: {
-      id: 'u123',
-      username: 'coolcreator',
-      profilePicture: 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150',
-      isVerified: true
-    },
-    createdAt: '2025-01-13T10:30:00Z',
-    isLiked: false,
-    isDisliked: false
-  };
-
-  const mockComments: Comment[] = [
-    {
-      id: 'c501',
-      text: 'Great tips! I especially love the 24-hour rule. It has saved me so much money on impulse purchases.',
-      creator: {
-        id: 'u456',
-        username: 'financeguru',
-        profilePicture: 'https://images.pexels.com/photos/1239288/pexels-photo-1239288.jpeg?auto=compress&cs=tinysrgb&w=150'
-      },
-      createdAt: '2025-01-13T11:00:00Z'
-    },
-    {
-      id: 'c502',
-      text: 'I started using these strategies and saved $2,000 in just 3 months. The automated savings tip changed my life!',
-      creator: {
-        id: 'u789',
-        username: 'savvyspender',
-        profilePicture: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150'
-      },
-      createdAt: '2025-01-13T11:05:00Z'
-    },
-    {
-      id: 'c503',
-      text: 'The subscription audit was eye-opening! I was paying for 6 services I forgot I had. Just cancelled 4 of them.',
-      creator: {
-        id: 'u101',
-        username: 'budgetmaster',
-        profilePicture: 'https://images.pexels.com/photos/1024993/pexels-photo-1024993.jpeg?auto=compress&cs=tinysrgb&w=150'
-      },
-      createdAt: '2025-01-13T12:30:00Z'
-    }
-  ];
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setPost(mockPost);
-      setComments(mockComments);
-      setLikes(mockPost.likes);
-      setDislikes(mockPost.dislikes);
-      setIsLiked(mockPost.isLiked || false);
-      setIsDisliked(mockPost.isDisliked || false);
-      setLoading(false);
-    }, 1000);
+    const fetchPost = async () => {
+      if (!id) return;
+      
+      setLoading(true);
+      setError(null);
+      
+      try {
+        const postData = await postsApi.getPost(id);
+        setPost(postData);
+        setLikes(postData.likes || 0);
+        setDislikes(postData.dislikes || 0);
+        setIsLiked(postData.isLiked || false);
+        setIsDisliked(postData.isDisliked || false);
+        
+        // Check if following the post creator (only if user is logged in and not viewing own post)
+        if (user && user.id !== postData.creator.id) {
+          try {
+            const followStatus = await usersApi.isFollowing(postData.creator.id);
+            setIsFollowing(followStatus.isFollowing);
+          } catch (err) {
+            console.error('Failed to check follow status:', err);
+          }
+        }
+        
+      } catch (err) {
+        console.error('Failed to fetch post:', err);
+        setError('Failed to load post');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPost();
   }, [id]);
 
-  const handleLike = () => {
-    if (isLiked) {
-      setLikes(likes - 1);
-      setIsLiked(false);
-    } else {
-      setLikes(likes + 1);
-      setIsLiked(true);
-      if (isDisliked) {
-        setDislikes(dislikes - 1);
-        setIsDisliked(false);
+  useEffect(() => {
+    const fetchComments = async () => {
+      if (!id) return;
+      
+      setCommentsLoading(true);
+      try {
+        const commentsResponse = await postsApi.getComments(id, 1, 20);
+        setComments(commentsResponse.comments || []);
+      } catch (err) {
+        console.error('Failed to fetch comments:', err);
+        setComments([]);
+      } finally {
+        setCommentsLoading(false);
       }
+    };
+
+    if (post) {
+      fetchComments();
     }
+  }, [id, post]);
+
+  const handleLike = async () => {
+    if (!post || !user || actionLoading) return;
     
-    // Call API in real implementation
-    // postsApi.likePost(post.id).catch(console.error);
+    setActionLoading(true);
+    try {
+      const response = await postsApi.likePost(post.id);
+      setIsLiked(response.isLiked);
+      setLikes(response.likes);
+      
+      // If we liked and were previously disliking, update dislike state
+      if (response.isLiked && isDisliked) {
+        setIsDisliked(false);
+        setDislikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to like post:', error);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const handleDislike = () => {
-    if (isDisliked) {
-      setDislikes(dislikes - 1);
-      setIsDisliked(false);
-    } else {
-      setDislikes(dislikes + 1);
-      setIsDisliked(true);
-      if (isLiked) {
-        setLikes(likes - 1);
-        setIsLiked(false);
-      }
-    }
+  const handleDislike = async () => {
+    if (!post || !user || actionLoading) return;
     
-    // Call API in real implementation
-    // postsApi.dislikePost(post.id).catch(console.error);
+    setActionLoading(true);
+    try {
+      const response = await postsApi.dislikePost(post.id);
+      setIsDisliked(response.isDisliked);
+      setDislikes(response.dislikes);
+      
+      // If we disliked and were previously liking, update like state
+      if (response.isDisliked && isLiked) {
+        setIsLiked(false);
+        setLikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to dislike post:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!post || !user || actionLoading || user.id === post.creator.id) return;
+    
+    setActionLoading(true);
+    try {
+      const response = await usersApi.toggleFollow(post.creator.id);
+      setIsFollowing(response.isFollowing);
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const handleShare = async () => {
+    if (!post) return;
+    
     if (navigator.share) {
       try {
         await navigator.share({
@@ -188,23 +156,30 @@ These strategies might seem simple, but consistency is key. Start with one or tw
     }
   };
 
-  const handleCommentSubmit = (e: React.FormEvent) => {
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !user) return;
+    if (!newComment.trim() || !user || !post || actionLoading) return;
 
-    const comment: Comment = {
-      id: 'c' + Date.now(),
-      text: newComment.trim(),
-      creator: {
-        id: user.id,
-        username: user.username,
-        profilePicture: user.profilePicture
-      },
-      createdAt: new Date().toISOString()
-    };
-
-    setComments([...comments, comment]);
-    setNewComment('');
+    setActionLoading(true);
+    try {
+      const comment = await postsApi.createComment({
+        text: newComment.trim(),
+        postId: post.id
+      });
+      
+      setComments([...comments, comment]);
+      setNewComment('');
+      
+      // Update post comment count
+      setPost({
+        ...post,
+        commentsCount: (post.commentsCount || 0) + 1
+      });
+    } catch (error) {
+      console.error('Failed to create comment:', error);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -235,11 +210,15 @@ These strategies might seem simple, but consistency is key. Start with one or tw
     );
   }
 
-  if (!post) {
+  if (error || !post) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Post not found</h1>
-        <p className="text-gray-600 dark:text-gray-400">The post you're looking for doesn't exist.</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          {error || "Post not found"}
+        </h1>
+        <p className="text-gray-600 dark:text-gray-400">
+          {error || "The post you're looking for doesn't exist."}
+        </p>
       </div>
     );
   }
@@ -268,17 +247,18 @@ These strategies might seem simple, but consistency is key. Start with one or tw
                 {post.creator.isVerified && (
                   <span className="text-primary-500">✓</span>
                 )}
-                {user?.id !== post.creator.id && (
+                {user && user.id !== post.creator.id && (
                   <button
-                    onClick={() => setIsFollowing(!isFollowing)}
-                    className={`ml-2 flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                    onClick={handleFollow}
+                    disabled={actionLoading}
+                    className={`ml-2 flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
                       isFollowing
                         ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         : 'bg-primary-500 text-white hover:bg-primary-600'
                     }`}
                   >
                     <UserPlus className="w-3 h-3" />
-                    <span>{isFollowing ? 'Following' : 'Follow'}</span>
+                    <span>{actionLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}</span>
                   </button>
                 )}
               </div>
@@ -348,7 +328,8 @@ These strategies might seem simple, but consistency is key. Start with one or tw
           <div className="flex items-center space-x-6">
             <button
               onClick={handleLike}
-              className={`flex items-center space-x-2 transition-colors ${
+              disabled={actionLoading}
+              className={`flex items-center space-x-2 transition-colors disabled:opacity-50 ${
                 isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
               }`}
             >
@@ -358,7 +339,8 @@ These strategies might seem simple, but consistency is key. Start with one or tw
 
             <button
               onClick={handleDislike}
-              className={`flex items-center space-x-2 transition-colors ${
+              disabled={actionLoading}
+              className={`flex items-center space-x-2 transition-colors disabled:opacity-50 ${
                 isDisliked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'
               }`}
             >
@@ -415,11 +397,17 @@ These strategies might seem simple, but consistency is key. Start with one or tw
                   <div className="mt-3 flex justify-end">
                     <button
                       type="submit"
-                      disabled={!newComment.trim()}
+                      disabled={!newComment.trim() || actionLoading}
                       className="flex items-center space-x-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <Send className="w-4 h-4" />
-                      <span>Comment</span>
+                      {actionLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>Comment</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -428,35 +416,52 @@ These strategies might seem simple, but consistency is key. Start with one or tw
           )}
 
           {/* Comments List */}
-          <div className="space-y-6">
-            {comments.map((comment) => (
-              <div key={comment.id} className="flex space-x-4">
-                <Link to={`/profile/${comment.creator.id}`}>
-                  <img
-                    src={comment.creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                    alt={comment.creator.username}
-                    className="w-10 h-10 rounded-full object-cover flex-shrink-0"
-                  />
-                </Link>
-                <div className="flex-1">
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <Link
-                        to={`/profile/${comment.creator.id}`}
-                        className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400"
-                      >
-                        @{comment.creator.username}
-                      </Link>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(comment.createdAt)}
-                      </span>
+          {commentsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-4">Loading comments...</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {comments.length > 0 ? (
+                comments.map((comment) => (
+                  <div key={comment.id} className="flex space-x-4">
+                    <Link to={`/profile/${comment.creator.id}`}>
+                      <img
+                        src={comment.creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
+                        alt={comment.creator.username}
+                        className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                      />
+                    </Link>
+                    <div className="flex-1">
+                      <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+                        <div className="flex items-center space-x-2 mb-1">
+                          <Link
+                            to={`/profile/${comment.creator.id}`}
+                            className="font-medium text-gray-900 dark:text-white hover:text-primary-600 dark:hover:text-primary-400"
+                          >
+                            @{comment.creator.username}
+                          </Link>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            {formatDate(comment.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 dark:text-gray-300">{comment.text}</p>
+                      </div>
                     </div>
-                    <p className="text-gray-700 dark:text-gray-300">{comment.text}</p>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No comments yet</h3>
+                  <p className="text-gray-500 dark:text-gray-400">
+                    Be the first to share your thoughts!
+                  </p>
                 </div>
-              </div>
-            ))}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </article>
 

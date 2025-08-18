@@ -120,4 +120,11 @@ export const postsApi = {
   /** @deprecated Use searchPosts instead */
   searchPostsLegacy: (query: string, page = 1, limit = 10): Promise<PostsResponse> =>
     apiRequest(`/api/posts/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`),
+
+  /** Gift coins to a post creator */
+  giftCoins: (postId: string, amount: number, message?: string): Promise<{ success: boolean; message: string }> =>
+    apiRequest(`/api/posts/${postId}/gift`, {
+      method: 'POST',
+      body: JSON.stringify({ amount, message }),
+    }),
 };

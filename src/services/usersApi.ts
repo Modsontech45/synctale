@@ -95,4 +95,15 @@ export const usersApi = {
     
     return response.data;
   },
+
+  // Get user profile by ID
+  getUserProfile: async (id: string): Promise<User> => {
+    const response = await apiRequest<User>(`/api/users/${id}/profile`);
+    
+    if (!response) {
+      throw new Error('Invalid response from server');
+    }
+    
+    return response;
+  },
 };

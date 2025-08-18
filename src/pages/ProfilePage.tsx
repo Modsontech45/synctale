@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { User, Post } from "../types";
 import { useAuth } from "../contexts/AuthContext";
+import { usersApi } from "../services/usersApi";
+import { postsApi } from "../services/postsApi";
 import {
   Calendar,
   Edit,
@@ -12,7 +14,6 @@ import {
   Coins,
 } from "lucide-react";
 import PostCard from "../components/Post/PostCard";
-import { authApi } from "../services/authApi";
 
 const ProfilePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,10 +21,12 @@ const ProfilePage: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "posts" | "followers" | "following"
   >("posts");
   const [isFollowing, setIsFollowing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!isInitialized) {
     return (
@@ -34,38 +37,83 @@ const ProfilePage: React.FC = () => {
   }
 
   const isOwnProfile = currentUser?.id === id;
-  console.log("User ID:", id);
-  console.log("Profile ID:", user?.id);
+
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!id) return;
+      
       setLoading(true);
+      setError(null);
+      
       try {
-        const profileData = await authApi.getProfile();
-        setUser(profileData.user);
-        setPosts([]); // Replace with actual posts API call if available
+        let profileData: User;
+        
+        if (isOwnProfile && currentUser) {
+          // Use current user data for own profile
+          profileData = currentUser;
+          await refreshUserData(); // Refresh to get latest data
+        } else {
+          // Fetch other user's profile
+          profileData = await usersApi.getUserProfile(id);
+        }
+        
+        setUser(profileData);
+        
+        // Check if following this user (only for other users)
+        if (!isOwnProfile && currentUser) {
+          try {
+            const followStatus = await usersApi.isFollowing(id);
+            setIsFollowing(followStatus.isFollowing);
+          } catch (err) {
+            console.error('Failed to check follow status:', err);
+          }
+        }
+        
       } catch (err) {
         console.error("Failed to fetch profile:", err);
+        setError("Failed to load profile");
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-
-    if (isOwnProfile && currentUser) {
-      refreshUserData();
-    }
   }, [id, currentUser, isOwnProfile, refreshUserData]);
 
-  const handleFollow = () => {
-    if (!user) return;
-    setIsFollowing(!isFollowing);
-    setUser({
-      ...user,
-      followersCount: isFollowing
-        ? user.followersCount - 1
-        : user.followersCount + 1,
-    });
+  useEffect(() => {
+    const fetchPosts = async () => {
+      if (!id) return;
+      
+      setPostsLoading(true);
+      try {
+        const postsResponse = await postsApi.getUserPosts(id, 1, 10);
+        setPosts(postsResponse.posts || []);
+      } catch (err) {
+        console.error("Failed to fetch user posts:", err);
+        setPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    };
+
+    if (user && activeTab === 'posts') {
+      fetchPosts();
+    }
+  }, [id, user, activeTab]);
+
+  const handleFollow = async () => {
+    if (!user || !currentUser || isOwnProfile) return;
+    
+    try {
+      const response = await usersApi.toggleFollow(user.id);
+      setIsFollowing(response.isFollowing);
+      setUser({
+        ...user,
+        followersCount: response.followersCount,
+      });
+    } catch (err) {
+      console.error('Failed to toggle follow:', err);
+    }
   };
 
   if (loading) {
@@ -80,11 +128,11 @@ const ProfilePage: React.FC = () => {
     );
   }
 
-  if (!user) {
+  if (error || !user) {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
-          User not found
+          {error || "User not found"}
         </h1>
         <p className="text-gray-600 dark:text-gray-400">
           The user you're looking for doesn't exist.
@@ -99,7 +147,7 @@ const ProfilePage: React.FC = () => {
         <div className="text-center mb-6">
           <img
             src={
-              user.avatar ||
+              user.profilePicture ||
               "https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=300"
             }
             alt={user.username}
@@ -123,7 +171,7 @@ const ProfilePage: React.FC = () => {
 
           <div className="flex items-center justify-center space-x-2 text-sm text-gray-500 dark:text-gray-400 mb-6">
             <Calendar className="w-4 h-4" />
-            <span>Joined January 2024</span>
+            <span>Joined {new Date(user.createdAt || '2024-01-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
           </div>
 
           <div className="flex justify-center space-x-3">
@@ -144,7 +192,7 @@ const ProfilePage: React.FC = () => {
                   <span>Settings</span>
                 </Link>
               </>
-            ) : (
+            ) : currentUser && (
               <button
                 onClick={handleFollow}
                 className={`flex items-center space-x-2 px-6 py-2 rounded-lg font-medium transition-colors ${
@@ -165,7 +213,7 @@ const ProfilePage: React.FC = () => {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-1 text-2xl font-bold text-gray-900 dark:text-white mb-1">
               <FileText className="w-6 h-6 text-primary-500" />
-              <span>{user.postsCount}</span>
+              <span>{user.postsCount || 0}</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">Posts</p>
           </div>
@@ -173,7 +221,7 @@ const ProfilePage: React.FC = () => {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-1 text-2xl font-bold text-gray-900 dark:text-white mb-1">
               <Users className="w-6 h-6 text-primary-500" />
-              <span>{user.followersCount}</span>
+              <span>{user.followersCount || 0}</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Followers
@@ -183,7 +231,7 @@ const ProfilePage: React.FC = () => {
           <div className="text-center">
             <div className="flex items-center justify-center space-x-1 text-2xl font-bold text-gray-900 dark:text-white mb-1">
               <Users className="w-6 h-6 text-primary-500" />
-              <span>{user.followingCount}</span>
+              <span>{user.followingCount || 0}</span>
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400">
               Following
@@ -194,7 +242,7 @@ const ProfilePage: React.FC = () => {
             <div className="text-center">
               <div className="flex items-center justify-center space-x-1 text-2xl font-bold text-gray-900 dark:text-white mb-1">
                 <Coins className="w-6 h-6 text-yellow-500" />
-                <span>{user.totalEarned}</span>
+                <span>{user.totalEarned || 0}</span>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400">Coins</p>
             </div>
@@ -202,7 +250,97 @@ const ProfilePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Navigation & Content (optional, can add later) */}
+      {/* Tab Navigation */}
+      <div className="flex space-x-1 mb-8 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
+        <button
+          onClick={() => setActiveTab('posts')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'posts'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Posts</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('followers')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'followers'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Followers</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('following')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-2 px-4 rounded-md font-medium transition-colors ${
+            activeTab === 'following'
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Following</span>
+        </button>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'posts' && (
+        <div>
+          {postsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+              <p className="text-gray-500 dark:text-gray-400 mt-4">Loading posts...</p>
+            </div>
+          ) : posts.length > 0 ? (
+            <div className="space-y-8">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No posts yet</h3>
+              <p className="text-gray-500 dark:text-gray-400">
+                {isOwnProfile ? "Create your first post to get started!" : "This user hasn't posted anything yet."}
+              </p>
+              {isOwnProfile && (
+                <Link
+                  to="/create"
+                  className="inline-flex items-center space-x-2 mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>Create Post</span>
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'followers' && (
+        <div className="text-center py-12">
+          <Users className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Followers</h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Followers list will be implemented here.
+          </p>
+        </div>
+      )}
+
+      {activeTab === 'following' && (
+        <div className="text-center py-12">
+          <Users className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Following</h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Following list will be implemented here.
+          </p>
+        </div>
+      )}
     </div>
   );
 };

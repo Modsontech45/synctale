@@ -4,6 +4,8 @@ import { Post } from '../../types';
 import { Heart, MessageCircle, Share2, Gift, ThumbsDown, MoreHorizontal, UserPlus, Eye, Send } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { postsApi } from '../../services/postsApi';
+import { usersApi } from '../../services/usersApi';
 import GiftModal from '../Modals/GiftModal';
 
 interface PostCardProps {
@@ -21,6 +23,8 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
   const [dislikes, setDislikes] = useState(post.dislikes || 0);
   const [showGiftModal, setShowGiftModal] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
 
   if (!post || !post.creator) return null; // Prevent undefined crashes
 
@@ -30,38 +34,64 @@ const PostCard: React.FC<PostCardProps> = ({ post }) => {
     window.location.href = `/chat/new?user=${post.creator.id}`;
   };
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
     if (!user) return navigate('/home');
-    setIsFollowing(!isFollowing);
-  };
-
-  const handleLike = () => {
-    if (!user) return navigate('/home');
-    setIsLiked(!isLiked);
-    setLikes((prev) => (isLiked ? prev - 1 : prev + 1));
-    if (!isLiked && isDisliked) {
-      setIsDisliked(false);
-      setDislikes((prev) => prev - 1);
-    }
+    if (followLoading) return;
     
-    // Call API in real implementation
-    // postsApi.likePost(post.id).catch(console.error);
-  };
-
-  const handleDislike = () => {
-    if (!user) return navigate('/home');
-    setIsDisliked(!isDisliked);
-    setDislikes((prev) => (isDisliked ? prev - 1 : prev + 1));
-    if (!isDisliked && isLiked) {
-      setIsLiked(false);
-      setLikes((prev) => prev - 1);
+    setFollowLoading(true);
+    try {
+      const response = await usersApi.toggleFollow(post.creator.id);
+      setIsFollowing(response.isFollowing);
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+    } finally {
+      setFollowLoading(false);
     }
-    
-    // Call API in real implementation
-    // postsApi.dislikePost(post.id).catch(console.error);
   };
 
-const username = post.user?.username || post.creator?.username || "Unknown";
+  const handleLike = async () => {
+    if (!user) return navigate('/home');
+    if (likeLoading) return;
+    
+    setLikeLoading(true);
+    try {
+      const response = await postsApi.likePost(post.id);
+      setIsLiked(response.isLiked);
+      setLikes(response.likes);
+      
+      // If we liked and were previously disliking, update dislike state
+      if (response.isLiked && isDisliked) {
+        setIsDisliked(false);
+        setDislikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to like post:', error);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const handleDislike = async () => {
+    if (!user) return navigate('/home');
+    if (likeLoading) return;
+    
+    setLikeLoading(true);
+    try {
+      const response = await postsApi.dislikePost(post.id);
+      setIsDisliked(response.isDisliked);
+      setDislikes(response.dislikes);
+      
+      // If we disliked and were previously liking, update like state
+      if (response.isDisliked && isLiked) {
+        setIsLiked(false);
+        setLikes(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      console.error('Failed to dislike post:', error);
+    } finally {
+      setLikeLoading(false);
+    }
+  };
 
   const handleGiftClick = () => {
     if (!user) return navigate('/home');
@@ -83,6 +113,8 @@ const username = post.user?.username || post.creator?.username || "Unknown";
       }
     } else {
       navigator.clipboard.writeText(url);
+      // Show a toast or alert that link was copied
+      alert('Link copied to clipboard!');
     }
   };
 
@@ -110,7 +142,7 @@ const username = post.user?.username || post.creator?.username || "Unknown";
               <Link to={`/profile/${post.creator.id}`}>
                 <img
                   src={post.creator.profilePicture || 'https://images.pexels.com/photos/91227/pexels-photo-91227.jpeg?auto=compress&cs=tinysrgb&w=150'}
-                  alt={post.user?.username || 'User'}
+                  alt={post.creator.username}
                   className="w-10 h-10 rounded-full object-cover"
                 />
               </Link>
@@ -120,20 +152,21 @@ const username = post.user?.username || post.creator?.username || "Unknown";
                     to={`/profile/${post.creator.id}`}
                     className="font-medium text-gray-900 dark:text-white hover:text-green-600 dark:hover:text-green-400"
                   >
-                    @{post.user?.username || 'Unknown'}
+                    @{post.creator.username}
                   </Link>
                   {post.creator.isVerified && <span className="text-green-500 text-sm">✓</span>}
                   {user?.id !== post.creator.id && (
                     <button
                       onClick={handleFollow}
-                      className={`ml-2 flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      disabled={followLoading}
+                      className={`ml-2 flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 ${
                         isFollowing
                           ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                           : 'bg-green-500 text-white hover:bg-green-600'
                       }`}
                     >
                       <UserPlus className="w-3 h-3" />
-                      <span>{isFollowing ? t('post.following') : t('post.follow')}</span>
+                      <span>{followLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}</span>
                     </button>
                   )}
                   <button
@@ -149,7 +182,7 @@ const username = post.user?.username || post.creator?.username || "Unknown";
                   <span>•</span>
                   <div className="flex items-center space-x-1">
                     <Eye className="w-3 h-3" />
-                    <span>{post.views || 0} {t('post.views')}</span>
+                    <span>{post.views || 0} views</span>
                   </div>
                   <span>•</span>
                   <span className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-1 rounded-full text-xs font-medium">
@@ -189,7 +222,8 @@ const username = post.user?.username || post.creator?.username || "Unknown";
             <div className="flex items-center space-x-6">
               <button
                 onClick={handleLike}
-                className={`flex items-center space-x-1 transition-colors ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                disabled={likeLoading}
+                className={`flex items-center space-x-1 transition-colors disabled:opacity-50 ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
               >
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
                 <span className="text-sm font-medium">{likes}</span>
@@ -197,7 +231,8 @@ const username = post.user?.username || post.creator?.username || "Unknown";
 
               <button
                 onClick={handleDislike}
-                className={`flex items-center space-x-1 transition-colors ${isDisliked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
+                disabled={likeLoading}
+                className={`flex items-center space-x-1 transition-colors disabled:opacity-50 ${isDisliked ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}
               >
                 <ThumbsDown className={`w-5 h-5 ${isDisliked ? 'fill-current' : ''}`} />
                 <span className="text-sm font-medium">{dislikes}</span>
@@ -220,7 +255,7 @@ const username = post.user?.username || post.creator?.username || "Unknown";
                 className="flex items-center space-x-1 text-gray-500 hover:text-green-500 transition-colors"
               >
                 <Share2 className="w-5 h-5" />
-                <span className="text-sm font-medium">{t('post.share')}</span>
+                <span className="text-sm font-medium">Share</span>
               </button>
             </div>
 
